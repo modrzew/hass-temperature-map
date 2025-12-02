@@ -4,7 +4,22 @@
 
 Create a Home Assistant custom integration that generates temperature heatmap images in the background, replacing the existing Lovelace frontend-only approach for better performance.
 
-**Source reference:** Original component at `/Users/modrzew/Projects/lovelace-temperature-map/`
+**Source reference:** Original component at `./lovelace-temperature-map/` (git submodule).
+
+If the submodule directory is empty, run:
+```bash
+git submodule update --init --recursive
+```
+
+**Key source files to port:**
+- `lovelace-temperature-map/src/lib/temperature-map/types.ts` - Type definitions
+- `lovelace-temperature-map/src/lib/temperature-map/geometry.ts` - Line intersection, wall collision
+- `lovelace-temperature-map/src/lib/temperature-map/distance.ts` - Flood fill algorithm
+- `lovelace-temperature-map/src/lib/temperature-map/temperature.ts` - Temperature interpolation & colors
+- `lovelace-temperature-map/src/cards/temperature-map-card.tsx` - Rendering logic reference
+
+**Additional documentation:**
+- `HA_INTEGRATION_GUIDE.md` - How to structure Home Assistant integration code
 
 ## Architecture
 
@@ -141,8 +156,112 @@ Python packages (standard library or HA core):
 - `homeassistant.helpers.update_coordinator`
 - `homeassistant.components.image`
 
-## Notes
+## Implementation Notes
 
+### General
 - The Python port should maintain identical visual output to the TypeScript version
-- Image generation happens in background thread to avoid blocking HA
+- Image generation happens in background thread via `async_add_executor_job` to avoid blocking HA
 - Consider caching distance grid between renders (only recompute when wall/sensor positions change)
+
+### TypeScript to Python Porting
+
+When porting the algorithms:
+
+1. **Math functions are the same**: `Math.sqrt` → `math.sqrt`, `Math.abs` → `abs()`, `Math.max/min` → `max()/min()`
+
+2. **Type hints**: Use Python dataclasses instead of TypeScript interfaces:
+   ```python
+   @dataclass
+   class Wall:
+       x1: int
+       y1: int
+       x2: int
+       y2: int
+   ```
+
+3. **Collections**:
+   - `Set<string>` → `set[str]` (use f-strings for keys like `f"{x},{y}"`)
+   - `Map<K,V>` → `dict[K,V]`
+   - `Array<T>` → `list[T]`
+
+4. **Infinity**: `Infinity` → `float('inf')`
+
+5. **Optional chaining**: `obj?.prop` → `obj.prop if obj else None` or use `getattr(obj, 'prop', default)`
+
+### Image Rendering with Pillow
+
+```python
+from PIL import Image, ImageDraw, ImageFont
+
+# Create image
+img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
+
+# Direct pixel access (for heatmap)
+pixels = img.load()
+pixels[x, y] = (r, g, b, a)
+
+# Or use putpixel (slower but simpler)
+img.putpixel((x, y), (r, g, b, a))
+
+# Drawing overlays
+draw = ImageDraw.Draw(img)
+draw.line([(x1, y1), (x2, y2)], fill=(51, 51, 51), width=2)
+draw.ellipse([x-6, y-6, x+6, y+6], fill=(255,255,255), outline=(51,51,51))
+draw.text((x, y), "Label", fill=(51,51,51), anchor="mm")  # mm = middle-middle
+
+# Export to bytes
+from io import BytesIO
+buffer = BytesIO()
+img.save(buffer, format='PNG')
+return buffer.getvalue()
+```
+
+### Performance Considerations
+
+1. **Distance grid is expensive** - The flood fill runs BFS for each sensor. Cache this between renders if walls/sensors haven't moved.
+
+2. **Pixel-by-pixel rendering** - For a 400x300 image, that's 120,000 pixels. Consider:
+   - Using numpy for vectorized operations if available
+   - Processing in chunks if memory is a concern
+   - The original uses `gridScale=1` (full resolution) - you might start with 2 or 4 for faster initial testing
+
+3. **Run rendering in executor** - Always use `await hass.async_add_executor_job(render_func, ...)` since Pillow operations block
+
+### Lovelace Overlay Card
+
+The overlay card needs to:
+1. Display the image entity (use `<hui-image>` or `<img>` with HA auth headers)
+2. Position sensor dots absolutely on top
+3. Handle click → dispatch `hass-more-info` event
+
+Basic structure:
+```javascript
+class TemperatureMapOverlay extends HTMLElement {
+  setConfig(config) {
+    this._config = config;
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  _render() {
+    // Get image URL from entity
+    const entity = this._hass.states[this._config.image_entity];
+    const imageUrl = `/api/image_proxy/${this._config.image_entity}`;
+
+    // Render image + sensor dots
+  }
+
+  _handleSensorClick(entityId) {
+    const event = new CustomEvent('hass-more-info', {
+      detail: { entityId },
+      bubbles: true,
+      composed: true,
+    });
+    this.dispatchEvent(event);
+  }
+}
+customElements.define('temperature-map-overlay', TemperatureMapOverlay);
+```

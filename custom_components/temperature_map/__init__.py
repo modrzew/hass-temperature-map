@@ -106,9 +106,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data[DOMAIN]["config"] = config[DOMAIN]
 
     # Forward setup to platforms
-    hass.async_create_task(
-        discovery.async_load_platform(hass, Platform.IMAGE, DOMAIN, {}, config)
-    )
+    hass.async_create_task(discovery.async_load_platform(hass, Platform.IMAGE, DOMAIN, {}, config))
 
     async def handle_refresh(call: ServiceCall) -> None:
         """Handle the refresh service call."""

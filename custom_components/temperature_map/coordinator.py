@@ -1,8 +1,9 @@
 """DataUpdateCoordinator for Temperature Map."""
+
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -42,37 +43,29 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
                 entity_id = sensor_config["entity"]
                 state = self.hass.states.get(entity_id)
                 if state is None or state.state in ("unknown", "unavailable"):
-                    _LOGGER.debug(
-                        "Sensor %s is unavailable, skipping",
-                        entity_id
-                    )
+                    _LOGGER.debug("Sensor %s is unavailable, skipping", entity_id)
                     continue
                 try:
                     temp = float(state.state)
-                    sensor_data.append({
-                        "entity": entity_id,
-                        "x": sensor_config["x"],
-                        "y": sensor_config["y"],
-                        "temp": temp,
-                        "label": sensor_config.get(
-                            "label",
-                            state.attributes.get("friendly_name", entity_id)
-                        ),
-                    })
-                except ValueError:
-                    _LOGGER.warning(
-                        "Invalid temperature value for %s: %s",
-                        entity_id,
-                        state.state
+                    sensor_data.append(
+                        {
+                            "entity": entity_id,
+                            "x": sensor_config["x"],
+                            "y": sensor_config["y"],
+                            "temp": temp,
+                            "label": sensor_config.get(
+                                "label", state.attributes.get("friendly_name", entity_id)
+                            ),
+                        }
                     )
+                except ValueError:
+                    _LOGGER.warning("Invalid temperature value for %s: %s", entity_id, state.state)
 
             if not sensor_data:
                 raise UpdateFailed("No valid sensor data available")
 
             # Run image generation in executor (blocking I/O)
-            image_bytes = await self.hass.async_add_executor_job(
-                self._render_heatmap, sensor_data
-            )
+            image_bytes = await self.hass.async_add_executor_job(self._render_heatmap, sensor_data)
 
             self._cached_image = image_bytes
             return image_bytes

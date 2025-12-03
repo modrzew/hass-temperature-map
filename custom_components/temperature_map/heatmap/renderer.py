@@ -1,4 +1,5 @@
 """Image rendering for temperature map using Pillow."""
+
 from __future__ import annotations
 
 from io import BytesIO
@@ -6,12 +7,12 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .types import Wall, TemperatureSensor
 from .distance import compute_distance_grid, is_point_inside_boundary
 from .temperature import (
+    interpolate_temperature_physics_with_circular_blending,
     temperature_to_color,
-    interpolate_temperature_physics_with_circular_blending
 )
+from .types import TemperatureSensor, Wall
 
 
 def render_heatmap_image(
@@ -22,7 +23,7 @@ def render_heatmap_image(
     ambient_temp: float = 22,
     show_names: bool = True,
     show_temps: bool = True,
-    rotation: int = 0
+    rotation: int = 0,
 ) -> bytes:
     """
     Render the complete heatmap image with temperature colors, walls, and sensors.
@@ -46,11 +47,7 @@ def render_heatmap_image(
     # Convert dict sensors to TemperatureSensor objects
     sensor_objects = [
         TemperatureSensor(
-            entity=s.get("entity", ""),
-            x=s["x"],
-            y=s["y"],
-            temp=s["temp"],
-            label=s.get("label")
+            entity=s.get("entity", ""), x=s["x"], y=s["y"], temp=s["temp"], label=s.get("label")
         )
         for s in sensors
     ]
@@ -86,22 +83,13 @@ def render_heatmap_image(
         offset_y = padding - min_y
 
         wall_objects = [
-            Wall(
-                x1=w.x1 + offset_x,
-                y1=w.y1 + offset_y,
-                x2=w.x2 + offset_x,
-                y2=w.y2 + offset_y
-            )
+            Wall(x1=w.x1 + offset_x, y1=w.y1 + offset_y, x2=w.x2 + offset_x, y2=w.y2 + offset_y)
             for w in wall_objects
         ]
 
         sensor_objects = [
             TemperatureSensor(
-                entity=s.entity,
-                x=s.x + offset_x,
-                y=s.y + offset_y,
-                temp=s.temp,
-                label=s.label
+                entity=s.entity, x=s.x + offset_x, y=s.y + offset_y, temp=s.temp, label=s.label
             )
             for s in sensor_objects
         ]
@@ -110,7 +98,7 @@ def render_heatmap_image(
     distance_grid = compute_distance_grid(sensor_objects, wall_objects, width, height)
 
     # Create image
-    img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
+    img = Image.new("RGBA", (width, height), (255, 255, 255, 0))
     pixels = img.load()
 
     # Render heatmap pixel by pixel
@@ -132,11 +120,7 @@ def render_heatmap_image(
     # Draw walls
     draw = ImageDraw.Draw(img)
     for wall in wall_objects:
-        draw.line(
-            [(wall.x1, wall.y1), (wall.x2, wall.y2)],
-            fill=(51, 51, 51),
-            width=2
-        )
+        draw.line([(wall.x1, wall.y1), (wall.x2, wall.y2)], fill=(51, 51, 51), width=2)
 
     # Draw sensors
     for sensor in sensor_objects:
@@ -146,7 +130,7 @@ def render_heatmap_image(
             [sensor.x - radius, sensor.y - radius, sensor.x + radius, sensor.y + radius],
             fill=(255, 255, 255),
             outline=(51, 51, 51),
-            width=2
+            width=2,
         )
 
         # Draw label and/or temperature
@@ -161,11 +145,13 @@ def render_heatmap_image(
             # Use default font - we can't rely on system fonts being available
             try:
                 font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
-            except (OSError, IOError):
+            except OSError:
                 font = ImageFont.load_default()
 
             # Get text size for background
-            bbox = draw.textbbox((sensor.x, sensor.y + radius + 5), label_text, font=font, anchor="mt")
+            bbox = draw.textbbox(
+                (sensor.x, sensor.y + radius + 5), label_text, font=font, anchor="mt"
+            )
 
             # Draw semi-transparent background for text
             draw.rectangle(bbox, fill=(255, 255, 255, 200))
@@ -177,7 +163,7 @@ def render_heatmap_image(
                 fill=(51, 51, 51),
                 font=font,
                 anchor="mt",
-                align="center"
+                align="center",
             )
 
     # Apply rotation if requested
@@ -190,5 +176,5 @@ def render_heatmap_image(
 
     # Convert to PNG bytes
     buffer = BytesIO()
-    img.save(buffer, format='PNG')
+    img.save(buffer, format="PNG")
     return buffer.getvalue()

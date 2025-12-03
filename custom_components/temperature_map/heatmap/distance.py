@@ -1,12 +1,13 @@
 """Distance and boundary calculations for temperature map."""
+
 from __future__ import annotations
 
 import math
 from collections import deque
 from typing import Any
 
-from .types import Wall, DistanceGrid, TemperatureSensor
 from .geometry import line_intersects_walls
+from .types import DistanceGrid, TemperatureSensor, Wall
 
 
 def flood_fill_distances(
@@ -15,7 +16,7 @@ def flood_fill_distances(
     walls: list[Wall],
     grid_width: int,
     grid_height: int,
-    grid_scale: int = 1
+    grid_scale: int = 1,
 ) -> list[list[float]]:
     """
     Flood fill distance computation using BFS.
@@ -33,8 +34,7 @@ def flood_fill_distances(
     """
     # Initialize distance grid with infinity
     distances: list[list[float]] = [
-        [float('inf') for _ in range(grid_width)]
-        for _ in range(grid_height)
+        [float("inf") for _ in range(grid_width)] for _ in range(grid_height)
     ]
 
     visited: set[str] = set()
@@ -55,9 +55,14 @@ def flood_fill_distances(
 
         # Check all 8 directions (including diagonals)
         directions = [
-            {"dx": -1, "dy": -1, "cost": math.sqrt(2)}, {"dx": 0, "dy": -1, "cost": 1}, {"dx": 1, "dy": -1, "cost": math.sqrt(2)},
-            {"dx": -1, "dy": 0, "cost": 1},                                              {"dx": 1, "dy": 0, "cost": 1},
-            {"dx": -1, "dy": 1, "cost": math.sqrt(2)},  {"dx": 0, "dy": 1, "cost": 1},  {"dx": 1, "dy": 1, "cost": math.sqrt(2)}
+            {"dx": -1, "dy": -1, "cost": math.sqrt(2)},
+            {"dx": 0, "dy": -1, "cost": 1},
+            {"dx": 1, "dy": -1, "cost": math.sqrt(2)},
+            {"dx": -1, "dy": 0, "cost": 1},
+            {"dx": 1, "dy": 0, "cost": 1},
+            {"dx": -1, "dy": 1, "cost": math.sqrt(2)},
+            {"dx": 0, "dy": 1, "cost": 1},
+            {"dx": 1, "dy": 1, "cost": math.sqrt(2)},
         ]
 
         for dir in directions:
@@ -87,12 +92,12 @@ def flood_fill_distances(
                     visited.add(key)
 
     # Ensure edge pixels are properly covered by adding additional boundary propagation
-    for pass_num in range(2):
+    for _pass_num in range(2):
         for y in range(grid_height):
             for x in range(grid_width):
                 # If this pixel is still unreachable (Infinity), try to propagate from reachable neighbors
-                if distances[y][x] == float('inf'):
-                    min_neighbor_distance = float('inf')
+                if distances[y][x] == float("inf"):
+                    min_neighbor_distance = float("inf")
 
                     # Check all 8 neighbors
                     for dy in range(-1, 2):
@@ -104,29 +109,30 @@ def flood_fill_distances(
                             ny = y + dy
 
                             if 0 <= nx < grid_width and 0 <= ny < grid_height:
-                                if distances[ny][nx] != float('inf'):
+                                if distances[ny][nx] != float("inf"):
                                     # Check if path from neighbor to current pixel is clear
                                     actual_x1 = nx * grid_scale
                                     actual_y1 = ny * grid_scale
                                     actual_x2 = x * grid_scale
                                     actual_y2 = y * grid_scale
 
-                                    if not line_intersects_walls(actual_x1, actual_y1, actual_x2, actual_y2, walls):
+                                    if not line_intersects_walls(
+                                        actual_x1, actual_y1, actual_x2, actual_y2, walls
+                                    ):
                                         step_cost = math.sqrt(dx * dx + dy * dy) * grid_scale
                                         propagated_distance = distances[ny][nx] + step_cost
-                                        min_neighbor_distance = min(min_neighbor_distance, propagated_distance)
+                                        min_neighbor_distance = min(
+                                            min_neighbor_distance, propagated_distance
+                                        )
 
-                    if min_neighbor_distance != float('inf'):
+                    if min_neighbor_distance != float("inf"):
                         distances[y][x] = min_neighbor_distance
 
     return distances
 
 
 def compute_distance_grid(
-    sensors: list[TemperatureSensor],
-    walls: list[Wall],
-    width: int,
-    height: int
+    sensors: list[TemperatureSensor], walls: list[Wall], width: int, height: int
 ) -> DistanceGrid:
     """
     Compute distance grid for all sensors.
@@ -149,28 +155,14 @@ def compute_distance_grid(
 
     for sensor in sensors:
         sensor_distances = flood_fill_distances(
-            sensor.x,
-            sensor.y,
-            walls,
-            grid_width,
-            grid_height,
-            grid_scale
+            sensor.x, sensor.y, walls, grid_width, grid_height, grid_scale
         )
         distances.append(sensor_distances)
 
-    return DistanceGrid(
-        distances=distances,
-        width=grid_width,
-        height=grid_height
-    )
+    return DistanceGrid(distances=distances, width=grid_width, height=grid_height)
 
 
-def get_interpolated_distance(
-    x: float,
-    y: float,
-    sensor_index: int,
-    grid: DistanceGrid
-) -> float:
+def get_interpolated_distance(x: float, y: float, sensor_index: int, grid: DistanceGrid) -> float:
     """
     Get interpolated distance from pre-computed grid using bilinear interpolation.
 
@@ -198,19 +190,35 @@ def get_interpolated_distance(
     fy = max(0, min(gy - y1, 1))
 
     # Get distance values at the four corners
-    d11 = grid.distances[sensor_index][y1][x1] if y1 < len(grid.distances[sensor_index]) and x1 < len(grid.distances[sensor_index][y1]) else float('inf')
-    d21 = grid.distances[sensor_index][y1][x2] if y1 < len(grid.distances[sensor_index]) and x2 < len(grid.distances[sensor_index][y1]) else float('inf')
-    d12 = grid.distances[sensor_index][y2][x1] if y2 < len(grid.distances[sensor_index]) and x1 < len(grid.distances[sensor_index][y2]) else float('inf')
-    d22 = grid.distances[sensor_index][y2][x2] if y2 < len(grid.distances[sensor_index]) and x2 < len(grid.distances[sensor_index][y2]) else float('inf')
+    d11 = (
+        grid.distances[sensor_index][y1][x1]
+        if y1 < len(grid.distances[sensor_index]) and x1 < len(grid.distances[sensor_index][y1])
+        else float("inf")
+    )
+    d21 = (
+        grid.distances[sensor_index][y1][x2]
+        if y1 < len(grid.distances[sensor_index]) and x2 < len(grid.distances[sensor_index][y1])
+        else float("inf")
+    )
+    d12 = (
+        grid.distances[sensor_index][y2][x1]
+        if y2 < len(grid.distances[sensor_index]) and x1 < len(grid.distances[sensor_index][y2])
+        else float("inf")
+    )
+    d22 = (
+        grid.distances[sensor_index][y2][x2]
+        if y2 < len(grid.distances[sensor_index]) and x2 < len(grid.distances[sensor_index][y2])
+        else float("inf")
+    )
 
     # Handle infinity values (unreachable areas)
-    if d11 == float('inf'):
-        return float('inf')
-    if d21 == float('inf'):
+    if d11 == float("inf"):
+        return float("inf")
+    if d21 == float("inf"):
         return d11
-    if d12 == float('inf'):
+    if d12 == float("inf"):
         return d11
-    if d22 == float('inf'):
+    if d22 == float("inf"):
         return d21
 
     # Bilinear interpolation
@@ -226,7 +234,7 @@ def is_point_inside_boundary(
     walls: list[Wall],
     canvas_width: int,
     canvas_height: int,
-    sensors: list[TemperatureSensor] | None = None
+    sensors: list[TemperatureSensor] | None = None,
 ) -> bool:
     """
     Check if a point is inside the boundary defined by walls and sensor positions.
@@ -253,10 +261,7 @@ def is_point_inside_boundary(
 
 
 def _compute_boundary_points(
-    walls: list[Wall],
-    canvas_width: int,
-    canvas_height: int,
-    sensors: list[TemperatureSensor]
+    walls: list[Wall], canvas_width: int, canvas_height: int, sensors: list[TemperatureSensor]
 ) -> set[str]:
     """
     Compute boundary points using flood fill from sensor positions.
@@ -276,10 +281,7 @@ def _compute_boundary_points(
         # No sensors to guide us - fall back to bounding box
         all_points = []
         for wall in walls:
-            all_points.extend([
-                {"x": wall.x1, "y": wall.y1},
-                {"x": wall.x2, "y": wall.y2}
-            ])
+            all_points.extend([{"x": wall.x1, "y": wall.y1}, {"x": wall.x2, "y": wall.y2}])
 
         if not all_points:
             # No walls either - include everything
@@ -321,7 +323,12 @@ def _compute_boundary_points(
 
         if key in visited:
             continue
-        if current["x"] < 0 or current["x"] >= grid_width or current["y"] < 0 or current["y"] >= grid_height:
+        if (
+            current["x"] < 0
+            or current["x"] >= grid_width
+            or current["y"] < 0
+            or current["y"] >= grid_height
+        ):
             continue
 
         visited.add(key)
@@ -332,8 +339,10 @@ def _compute_boundary_points(
 
         # Check all 4 directions
         directions = [
-            {"dx": -1, "dy": 0}, {"dx": 1, "dy": 0},
-            {"dx": 0, "dy": -1}, {"dx": 0, "dy": 1}
+            {"dx": -1, "dy": 0},
+            {"dx": 1, "dy": 0},
+            {"dx": 0, "dy": -1},
+            {"dx": 0, "dy": 1},
         ]
 
         for dir in directions:

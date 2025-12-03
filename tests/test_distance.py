@@ -1,11 +1,10 @@
 """Tests for distance module."""
-import pytest
 
-from custom_components.temperature_map.heatmap.distance import (
+from heatmap.distance import (
     flood_fill_distances,
     get_interpolated_distance,
 )
-from custom_components.temperature_map.heatmap.types import Wall, DistanceGrid
+from heatmap.types import DistanceGrid, Wall
 
 
 def test_flood_fill_basic():
@@ -36,7 +35,7 @@ def test_flood_fill_with_wall():
     assert distances[5][3] == 0
 
     # Point on same side of wall should be reachable
-    assert distances[5][2] < float('inf')
+    assert distances[5][2] < float("inf")
 
     # Point on other side of wall might be unreachable or have very long path
     # (depending on whether wall extends to edges)
@@ -61,20 +60,14 @@ def test_flood_fill_unreachable_area():
     assert distances[5][5] == 0
 
     # Points outside the box should be unreachable
-    assert distances[0][0] == float('inf')
-    assert distances[9][9] == float('inf')
+    assert distances[0][0] == float("inf")
+    assert distances[9][9] == float("inf")
 
 
 def test_get_interpolated_distance_basic():
     """Test bilinear interpolation of distance values."""
     # Create a simple distance grid
-    distances = [
-        [
-            [0, 1, 2],
-            [1, 2, 3],
-            [2, 3, 4]
-        ]
-    ]
+    distances = [[[0, 1, 2], [1, 2, 3], [2, 3, 4]]]
     grid = DistanceGrid(distances=distances, width=3, height=3)
 
     # Test exact grid point
@@ -91,19 +84,13 @@ def test_get_interpolated_distance_basic():
 def test_get_interpolated_distance_infinity():
     """Test that infinity values are handled correctly."""
     # Grid with some infinity values
-    inf = float('inf')
-    distances = [
-        [
-            [0, 1, inf],
-            [1, 2, inf],
-            [inf, inf, inf]
-        ]
-    ]
+    inf = float("inf")
+    distances = [[[0, 1, inf], [1, 2, inf], [inf, inf, inf]]]
     grid = DistanceGrid(distances=distances, width=3, height=3)
 
     # Point with all infinity neighbors should return infinity
-    assert get_interpolated_distance(2, 2, 0, grid) == float('inf')
+    assert get_interpolated_distance(2, 2, 0, grid) == float("inf")
 
     # Point with some reachable neighbors should use available values
     result = get_interpolated_distance(0, 0, 0, grid)
-    assert result < float('inf')
+    assert result < float("inf")

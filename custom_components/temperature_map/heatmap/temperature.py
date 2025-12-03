@@ -1,16 +1,15 @@
 """Temperature and color processing for temperature map."""
+
 from __future__ import annotations
 
 import math
 
-from .types import DistanceGrid, Wall, TemperatureSensor
 from .distance import get_interpolated_distance
+from .types import DistanceGrid, TemperatureSensor, Wall
 
 
 def temperature_to_color(
-    temp: float,
-    comfort_min: float,
-    comfort_max: float
+    temp: float, comfort_min: float, comfort_max: float
 ) -> tuple[int, int, int]:
     """
     Convert temperature value to RGB color tuple based on comfort zone.
@@ -52,10 +51,7 @@ def temperature_to_color(
     if temp >= comfort_max + transition_range:
         # Create gradient from medium red to dark red
         warm_range = 8  # Range for warm gradient
-        warm_normalized = max(
-            0,
-            min(1, (temp - (comfort_max + transition_range)) / warm_range)
-        )
+        warm_normalized = max(0, min(1, (temp - (comfort_max + transition_range)) / warm_range))
 
         # Medium red (255, 0, 0) to dark red (180, 0, 0)
         red = round(255 - (255 - 180) * warm_normalized)
@@ -99,7 +95,7 @@ def interpolate_temperature_physics(
     sensors: list[TemperatureSensor],
     distance_grid: DistanceGrid,
     ambient_temp: float = 22,
-    walls: list[Wall] | None = None
+    walls: list[Wall] | None = None,
 ) -> float:
     """
     Physics-based temperature interpolation using flood fill distances.
@@ -127,24 +123,28 @@ def interpolate_temperature_physics(
         path_distance = get_interpolated_distance(x, y, index, distance_grid)
 
         # If flood fill couldn't reach this point, the sensor has no influence
-        if path_distance == float('inf'):
-            sensor_influences.append({
-                "sensor": sensor,
-                "influence": 0,
-                "path_distance": float('inf'),
-                "effective_distance": float('inf')
-            })
+        if path_distance == float("inf"):
+            sensor_influences.append(
+                {
+                    "sensor": sensor,
+                    "influence": 0,
+                    "path_distance": float("inf"),
+                    "effective_distance": float("inf"),
+                }
+            )
             continue
 
         # Sensor dominance radius - within this distance, use exact sensor temperature
         dominance_radius = 8  # Smaller radius to match smaller sensor dots
         if path_distance <= dominance_radius:
-            sensor_influences.append({
-                "sensor": sensor,
-                "influence": 100,  # High but not overwhelming influence
-                "path_distance": path_distance,
-                "effective_distance": path_distance
-            })
+            sensor_influences.append(
+                {
+                    "sensor": sensor,
+                    "influence": 100,  # High but not overwhelming influence
+                    "path_distance": path_distance,
+                    "effective_distance": path_distance,
+                }
+            )
             continue
 
         # Natural heat diffusion with gentler decay to allow flow-like spreading
@@ -159,12 +159,14 @@ def interpolate_temperature_physics(
         # Bonus influence for sensors that can reach via shorter flood fill paths
         flow_bonus = 1 + math.exp(-path_distance / 30)  # Bonus decreases with path distance
 
-        sensor_influences.append({
-            "sensor": sensor,
-            "influence": influence * flow_bonus,
-            "path_distance": path_distance,
-            "effective_distance": effective_distance
-        })
+        sensor_influences.append(
+            {
+                "sensor": sensor,
+                "influence": influence * flow_bonus,
+                "path_distance": path_distance,
+                "effective_distance": effective_distance,
+            }
+        )
 
     # Filter out unreachable sensors
     reachable_sensors = [s for s in sensor_influences if s["influence"] > 0]
@@ -178,9 +180,9 @@ def interpolate_temperature_physics(
     total_influence = sum(s["influence"] for s in reachable_sensors)
 
     # Calculate weighted temperature based on natural flow influences
-    weighted_temp = sum(
-        s["sensor"].temp * s["influence"] for s in reachable_sensors
-    ) / total_influence
+    weighted_temp = (
+        sum(s["sensor"].temp * s["influence"] for s in reachable_sensors) / total_influence
+    )
 
     # Smooth blending with ambient temperature for areas with weak sensor influence
     influence_threshold = 0.02  # Higher threshold for more natural transitions
@@ -197,7 +199,7 @@ def interpolate_temperature_physics_with_circular_blending(
     sensors: list[TemperatureSensor],
     distance_grid: DistanceGrid,
     ambient_temp: float,
-    walls: list[Wall]
+    walls: list[Wall],
 ) -> float:
     """
     Enhanced interpolation with circular blending around sensors to prevent square artifacts.
@@ -221,12 +223,7 @@ def interpolate_temperature_physics_with_circular_blending(
         if direct_distance <= blend_radius:
             # Get the base interpolated temperature (without this sensor's direct influence)
             base_temp = interpolate_temperature_physics(
-                x,
-                y,
-                sensors,
-                distance_grid,
-                ambient_temp,
-                walls
+                x, y, sensors, distance_grid, ambient_temp, walls
             )
 
             # Calculate circular blend factor (1.0 at sensor center, 0.0 at blend radius)
@@ -239,11 +236,4 @@ def interpolate_temperature_physics_with_circular_blending(
             return sensor.temp * smooth_blend + base_temp * (1 - smooth_blend)
 
     # If not near any sensor, use normal physics interpolation
-    return interpolate_temperature_physics(
-        x,
-        y,
-        sensors,
-        distance_grid,
-        ambient_temp,
-        walls
-    )
+    return interpolate_temperature_physics(x, y, sensors, distance_grid, ambient_temp, walls)

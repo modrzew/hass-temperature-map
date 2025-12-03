@@ -1,12 +1,11 @@
 """Tests for geometry module."""
-import pytest
 
-from custom_components.temperature_map.heatmap.geometry import (
+from heatmap.geometry import (
+    check_wall_proximity,
     line_intersection,
     line_intersects_walls,
-    check_wall_proximity,
 )
-from custom_components.temperature_map.heatmap.types import Wall
+from heatmap.types import Wall
 
 
 def test_line_intersection_basic():

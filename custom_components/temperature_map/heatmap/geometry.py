@@ -1,13 +1,14 @@
 """Geometric calculations for temperature map."""
+
 from __future__ import annotations
 
 import math
-from .types import Wall, Point
+
+from .types import Point, Wall
 
 
 def line_intersection(
-    x1: float, y1: float, x2: float, y2: float,
-    x3: float, y3: float, x4: float, y4: float
+    x1: float, y1: float, x2: float, y2: float, x3: float, y3: float, x4: float, y4: float
 ) -> Point | None:
     """
     Calculate intersection point between two line segments.
@@ -29,17 +30,11 @@ def line_intersection(
     u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom
 
     if 0 <= t <= 1 and 0 <= u <= 1:
-        return Point(
-            x=x1 + t * (x2 - x1),
-            y=y1 + t * (y2 - y1)
-        )
+        return Point(x=x1 + t * (x2 - x1), y=y1 + t * (y2 - y1))
     return None
 
 
-def line_intersects_walls(
-    x1: float, y1: float, x2: float, y2: float,
-    walls: list[Wall]
-) -> bool:
+def line_intersects_walls(x1: float, y1: float, x2: float, y2: float, walls: list[Wall]) -> bool:
     """
     Check if a line intersects any wall.
 
@@ -52,16 +47,21 @@ def line_intersects_walls(
         True if line intersects any wall
     """
     for wall in walls:
-        intersection = line_intersection(
-            x1, y1, x2, y2,
-            wall.x1, wall.y1, wall.x2, wall.y2
-        )
+        intersection = line_intersection(x1, y1, x2, y2, wall.x1, wall.y1, wall.x2, wall.y2)
         if intersection:
             # Check if intersection is within both line segments (including endpoints)
             t1 = (intersection.x - x1) / (x2 - x1) if abs(x2 - x1) > 0.001 else 0
             t2 = (intersection.y - y1) / (y2 - y1) if abs(y2 - y1) > 0.001 else 0
-            t_wall1 = (intersection.x - wall.x1) / (wall.x2 - wall.x1) if abs(wall.x2 - wall.x1) > 0.001 else 0
-            t_wall2 = (intersection.y - wall.y1) / (wall.y2 - wall.y1) if abs(wall.y2 - wall.y1) > 0.001 else 0
+            t_wall1 = (
+                (intersection.x - wall.x1) / (wall.x2 - wall.x1)
+                if abs(wall.x2 - wall.x1) > 0.001
+                else 0
+            )
+            t_wall2 = (
+                (intersection.y - wall.y1) / (wall.y2 - wall.y1)
+                if abs(wall.y2 - wall.y1) > 0.001
+                else 0
+            )
 
             # Use consistent parameter for both x and y calculations
             t = t1 if abs(x2 - x1) > abs(y2 - y1) else t2
@@ -73,11 +73,7 @@ def line_intersects_walls(
     return False
 
 
-def check_wall_proximity(
-    x: float, y: float,
-    walls: list[Wall],
-    radius: float
-) -> bool:
+def check_wall_proximity(x: float, y: float, walls: list[Wall], radius: float) -> bool:
     """
     Check if a point is within a given radius of any wall.
 

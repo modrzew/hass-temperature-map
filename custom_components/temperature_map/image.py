@@ -1,8 +1,9 @@
 """Image platform for Temperature Map."""
+
 from __future__ import annotations
 
-from datetime import datetime
 import logging
+from datetime import datetime
 
 from homeassistant.components.image import ImageEntity
 from homeassistant.core import HomeAssistant, callback
@@ -10,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, CONF_UPDATE_INTERVAL
+from .const import CONF_UPDATE_INTERVAL, DOMAIN
 from .coordinator import TemperatureMapCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,9 +34,7 @@ async def async_setup_platform(
         name = map_config["name"]
         update_interval = map_config.get(CONF_UPDATE_INTERVAL, 15)
 
-        coordinator = TemperatureMapCoordinator(
-            hass, name, map_config, update_interval
-        )
+        coordinator = TemperatureMapCoordinator(hass, name, map_config, update_interval)
 
         # Store coordinator for service calls
         coordinators.append(coordinator)

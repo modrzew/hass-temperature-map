@@ -40,7 +40,7 @@ async def async_setup_platform(
         coordinators.append(coordinator)
 
         # Fetch initial data
-        await coordinator.async_config_entry_first_refresh()
+        await coordinator.async_refresh()
 
         entities.append(TemperatureMapImage(coordinator, name))
 

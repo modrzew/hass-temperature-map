@@ -1,0 +1,10 @@
+{
+  "domain": "temperature_map",
+  "name": "Temperature Map",
+  "version": "1.0.0",
+  "documentation": "https://github.com/modrzew/hass-temperature-map",
+  "dependencies": [],
+  "codeowners": ["@modrzew"],
+  "iot_class": "local_polling",
+  "requirements": ["Pillow>=10.0.0"]
+}

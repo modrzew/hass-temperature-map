@@ -1,0 +1,4 @@
+refresh:
+  name: Refresh temperature map
+  description: Manually trigger a refresh of all temperature map images.
+  fields: {}

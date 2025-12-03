@@ -39,10 +39,10 @@ async def async_setup_platform(
         # Store coordinator for service calls
         coordinators.append(coordinator)
 
-        # Fetch initial data
-        await coordinator.async_refresh()
-
         entities.append(TemperatureMapImage(coordinator, name))
+
+        # Schedule first refresh without blocking startup
+        coordinator.async_request_refresh()
 
     # Store coordinators for the refresh service
     hass.data[DOMAIN]["coordinators"] = coordinators

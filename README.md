@@ -123,27 +123,33 @@ image: image.temperature_map_living_room
 
 For interactive sensor dots, use the custom overlay card. The frontend resource is **automatically registered** when you install the integration - no manual setup required!
 
-Simply add the card to your dashboard:
+The card automatically reads sensor positions and rotation from the integration configuration, so you only need to specify the image entity:
 
 ```yaml
 type: custom:temperature-map-overlay
 image_entity: image.temperature_map_living_room
-rotation: 0  # Optional: must match the integration rotation setting
-sensors:
+```
+
+That's it! The card will automatically use the sensor coordinates and rotation from your `configuration.yaml`.
+
+**Advanced:** You can optionally override the sensors and rotation in the card config if needed:
+
+```yaml
+type: custom:temperature-map-overlay
+image_entity: image.temperature_map_living_room
+rotation: 90  # Override rotation
+sensors:      # Override sensor positions
   - entity: sensor.living_room_temperature
     x: 100
     y: 100
   - entity: sensor.kitchen_temperature
     x: 280
     y: 100
-  - entity: sensor.bedroom_temperature
-    x: 100
-    y: 200
 ```
 
 **Notes:**
-- The sensor coordinates in the card must match those in the integration configuration
 - After installing/updating via HACS, do a hard refresh (Ctrl+Shift+R / Cmd+Shift+R) in your browser to load the new frontend resources
+- Sensor coordinates are automatically read from the integration configuration - no duplication needed!
 
 ### Manual Refresh
 

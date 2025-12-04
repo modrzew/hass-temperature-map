@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.image import ImageEntity
 from homeassistant.core import HomeAssistant, callback
@@ -11,7 +12,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_UPDATE_INTERVAL, DOMAIN
+from .const import CONF_ROTATION, CONF_SENSORS, CONF_UPDATE_INTERVAL, DOMAIN
 from .coordinator import TemperatureMapCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ async def async_setup_platform(
             _LOGGER.error("Failed to fetch initial data for %s: %s", name, err)
             # Continue anyway - coordinator will retry based on update_interval
 
-        entities.append(TemperatureMapImage(coordinator, name))
+        entities.append(TemperatureMapImage(coordinator, name, map_config))
 
     # Store coordinators for the refresh service
     hass.data[DOMAIN]["coordinators"] = coordinators
@@ -70,6 +71,7 @@ class TemperatureMapImage(CoordinatorEntity[TemperatureMapCoordinator], ImageEnt
         self,
         coordinator: TemperatureMapCoordinator,
         name: str,
+        config: dict[str, Any],
     ) -> None:
         """Initialize the image entity."""
         CoordinatorEntity.__init__(self, coordinator)
@@ -77,9 +79,18 @@ class TemperatureMapImage(CoordinatorEntity[TemperatureMapCoordinator], ImageEnt
 
         self._attr_name = f"Temperature Map {name}"
         self._attr_unique_id = f"temperature_map_{name.lower().replace(' ', '_')}"
+        self._config = config
 
         # Don't set image_last_updated until we have actual data
         # Let the coordinator update handle it
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return entity specific state attributes."""
+        return {
+            "sensors": self._config.get(CONF_SENSORS, []),
+            "rotation": self._config.get(CONF_ROTATION, 0),
+        }
 
     @callback
     def _handle_coordinator_update(self) -> None:

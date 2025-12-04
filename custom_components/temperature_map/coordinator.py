@@ -78,7 +78,9 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
                 )
             else:
                 _LOGGER.debug(
-                    "Rendering heatmap with %d/%d sensors available", len(sensor_data), total_sensors
+                    "Rendering heatmap with %d/%d sensors available",
+                    len(sensor_data),
+                    total_sensors,
                 )
 
             # Run image generation in executor (blocking I/O)

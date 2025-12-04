@@ -138,7 +138,9 @@ def render_heatmap_image(
                     pixels[x, y] = (*color, 255)
         _LOGGER.debug("Heatmap rendering complete")
     else:
-        _LOGGER.info("No sensors available - rendering floor plan only (walls without temperature data)")
+        _LOGGER.info(
+            "No sensors available - rendering floor plan only (walls without temperature data)"
+        )
 
     # Draw walls
     draw = ImageDraw.Draw(img)
@@ -217,5 +219,10 @@ def render_heatmap_image(
     buffer = BytesIO()
     img.save(buffer, format="PNG")
     image_bytes = buffer.getvalue()
-    _LOGGER.debug("Image rendering complete: %d bytes, final size %dx%d", len(image_bytes), img.width, img.height)
+    _LOGGER.debug(
+        "Image rendering complete: %d bytes, final size %dx%d",
+        len(image_bytes),
+        img.width,
+        img.height,
+    )
     return image_bytes

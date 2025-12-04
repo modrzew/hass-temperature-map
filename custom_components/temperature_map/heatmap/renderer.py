@@ -18,6 +18,39 @@ from .types import TemperatureSensor, Wall
 _LOGGER = logging.getLogger(__name__)
 
 
+def _transform_point(
+    x: float, y: float, rotation: int, orig_width: int, orig_height: int
+) -> tuple[float, float]:
+    """
+    Transform a point's coordinates based on image rotation.
+
+    When PIL rotates an image with expand=True, points move to new positions.
+    This function calculates where a point (x, y) ends up after rotation.
+
+    Args:
+        x: Original x coordinate
+        y: Original y coordinate
+        rotation: Rotation angle (0, 90, 180, 270)
+        orig_width: Original image width before rotation
+        orig_height: Original image height before rotation
+
+    Returns:
+        Tuple of (new_x, new_y) coordinates after rotation
+    """
+    if rotation == 90:
+        # rotate(-90) clockwise: point (x,y) moves to (height-y, x)
+        return (orig_height - y, x)
+    elif rotation == 180:
+        # rotate(180): point (x,y) moves to (width-x, height-y)
+        return (orig_width - x, orig_height - y)
+    elif rotation == 270:
+        # rotate(90) counterclockwise: point (x,y) moves to (y, width-x)
+        return (y, orig_width - x)
+    else:
+        # No rotation
+        return (x, y)
+
+
 def render_heatmap_image(
     walls: list[dict[str, int]],
     sensors: list[dict[str, Any]],
@@ -147,10 +180,9 @@ def render_heatmap_image(
     for wall in wall_objects:
         draw.line([(wall.x1, wall.y1), (wall.x2, wall.y2)], fill=(51, 51, 51), width=2)
 
-    # Draw sensors
+    # Draw sensors (dots only - labels drawn after rotation)
+    radius = 6
     for sensor in sensor_objects:
-        # Draw sensor dot
-        radius = 6
         draw.ellipse(
             [sensor.x - radius, sensor.y - radius, sensor.x + radius, sensor.y + radius],
             fill=(255, 255, 255),
@@ -158,51 +190,9 @@ def render_heatmap_image(
             width=2,
         )
 
-        # Draw label and/or temperature
-        labels = []
-        if show_names and sensor.label:
-            labels.append(sensor.label)
-        if show_temps:
-            labels.append(f"{sensor.temp:.1f}°C")
-
-        if labels:
-            label_text = "\n".join(labels)
-            # Use default font - we can't rely on system fonts being available
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
-            except OSError:
-                _LOGGER.debug("DejaVu font not found, using default font")
-                font = ImageFont.load_default()
-
-            # Get text size for background (no anchor for multiline text support)
-            text_y = sensor.y + radius + 5
-            bbox = draw.textbbox((0, 0), label_text, font=font, align="center")
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-
-            # Center text horizontally
-            text_x = sensor.x - text_width / 2
-
-            # Calculate background rectangle
-            padding = 2
-            bg_bbox = (
-                text_x - padding,
-                text_y - padding,
-                text_x + text_width + padding,
-                text_y + text_height + padding,
-            )
-
-            # Draw semi-transparent background for text
-            draw.rectangle(bg_bbox, fill=(255, 255, 255, 200))
-
-            # Draw text
-            draw.text(
-                (text_x, text_y),
-                label_text,
-                fill=(51, 51, 51),
-                font=font,
-                align="center",
-            )
+    # Store original dimensions and sensor positions for coordinate transformation
+    orig_width = width
+    orig_height = height
 
     # Apply rotation if requested
     if rotation == 90:
@@ -214,6 +204,51 @@ def render_heatmap_image(
     elif rotation == 270:
         img = img.rotate(90, expand=True)
         _LOGGER.debug("Applied 270° rotation")
+
+    # Draw labels AFTER rotation so they stay upright
+    if show_names or show_temps:
+        # Create new draw context after rotation
+        draw = ImageDraw.Draw(img)
+
+        # Load font once
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+        except OSError:
+            _LOGGER.debug("DejaVu font not found, using default font")
+            font = ImageFont.load_default()
+
+        for sensor in sensor_objects:
+            # Transform sensor coordinates based on rotation
+            sensor_x, sensor_y = _transform_point(
+                sensor.x, sensor.y, rotation, orig_width, orig_height
+            )
+
+            # Build label text
+            labels = []
+            if show_names and sensor.label:
+                labels.append(sensor.label)
+            if show_temps:
+                labels.append(f"{sensor.temp:.1f}°C")
+
+            if labels:
+                label_text = "\n".join(labels)
+
+                # Position label below the sensor dot
+                text_y = sensor_y + radius + 5
+                bbox = draw.textbbox((0, 0), label_text, font=font, align="center")
+                text_width = bbox[2] - bbox[0]
+
+                # Center text horizontally
+                text_x = sensor_x - text_width / 2
+
+                # Draw text directly without background (fully transparent)
+                draw.text(
+                    (text_x, text_y),
+                    label_text,
+                    fill=(51, 51, 51),
+                    font=font,
+                    align="center",
+                )
 
     # Convert to PNG bytes
     buffer = BytesIO()

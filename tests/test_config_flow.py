@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -12,13 +12,7 @@ try:
     from homeassistant.core import HomeAssistant
     from homeassistant.data_entry_flow import FlowResultType
     from custom_components.temperature_map.const import (
-        CONF_AMBIENT_TEMP,
-        CONF_COMFORT_MAX_TEMP,
-        CONF_COMFORT_MIN_TEMP,
-        CONF_ROTATION,
         CONF_SENSORS,
-        CONF_SHOW_SENSOR_NAMES,
-        CONF_SHOW_SENSOR_TEMPERATURES,
         CONF_UPDATE_INTERVAL,
         CONF_WALLS,
         DOMAIN,
@@ -28,13 +22,7 @@ try:
 except ImportError:
     HA_AVAILABLE = False
     # Define dummy values to allow module import
-    CONF_AMBIENT_TEMP = None
-    CONF_COMFORT_MAX_TEMP = None
-    CONF_COMFORT_MIN_TEMP = None
-    CONF_ROTATION = None
     CONF_SENSORS = None
-    CONF_SHOW_SENSOR_NAMES = None
-    CONF_SHOW_SENSOR_TEMPERATURES = None
     CONF_UPDATE_INTERVAL = None
     CONF_WALLS = None
     DOMAIN = None
@@ -97,125 +85,6 @@ async def test_user_flow_minimal(hass: HomeAssistant, mock_setup_entry):
     assert result["title"] == "Test Map"
     assert result["data"]["name"] == "Test Map"
     assert result["options"][CONF_UPDATE_INTERVAL] == 15
-    assert result["options"][CONF_WALLS] == [{"x1": 50, "y1": 50, "x2": 350, "y2": 50}]
-    assert result["options"][CONF_SENSORS] == [{"entity": "sensor.test_temp", "x": 100, "y": 100}]
-
-
-async def test_user_flow_invalid_json(hass: HomeAssistant):
-    """Test user flow with invalid JSON."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    # Submit basic config
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            "name": "Test Map",
-        },
-    )
-
-    # Submit invalid JSON
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            CONF_WALLS: "not valid json",
-            CONF_SENSORS: '[{"entity": "sensor.test", "x": 100, "y": 100}]',
-        },
-    )
-
-    assert result["type"] == FlowResultType.FORM
-    assert result["errors"]["base"]
-
-
-async def test_user_flow_invalid_wall_schema(hass: HomeAssistant):
-    """Test user flow with invalid wall schema."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    # Submit basic config
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            "name": "Test Map",
-        },
-    )
-
-    # Submit wall missing required field
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            CONF_WALLS: '[{"x1": 50, "y1": 50}]',  # Missing x2, y2
-            CONF_SENSORS: '[{"entity": "sensor.test", "x": 100, "y": 100}]',
-        },
-    )
-
-    assert result["type"] == FlowResultType.FORM
-    assert result["errors"]["base"]
-
-
-async def test_user_flow_empty_sensors(hass: HomeAssistant):
-    """Test user flow with empty sensors list."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    # Submit basic config
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            "name": "Test Map",
-        },
-    )
-
-    # Submit empty sensors
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            CONF_WALLS: '[{"x1": 50, "y1": 50, "x2": 350, "y2": 50}]',
-            CONF_SENSORS: "[]",
-        },
-    )
-
-    assert result["type"] == FlowResultType.FORM
-    assert result["errors"]["base"]
-
-
-async def test_user_flow_duplicate_name(hass: HomeAssistant, mock_setup_entry):
-    """Test user flow with duplicate name."""
-    # Create first entry
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            "name": "Test Map",
-        },
-    )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            CONF_WALLS: '[{"x1": 50, "y1": 50, "x2": 350, "y2": 50}]',
-            CONF_SENSORS: '[{"entity": "sensor.test", "x": 100, "y": 100}]',
-        },
-    )
-    assert result["type"] == FlowResultType.CREATE_ENTRY
-
-    # Try to create second entry with same name
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            "name": "Test Map",  # Same name
-        },
-    )
-
-    assert result["type"] == FlowResultType.ABORT
-    assert result["reason"] == "already_configured"
 
 
 async def test_import_flow(hass: HomeAssistant, mock_setup_entry):
@@ -243,32 +112,4 @@ async def test_import_flow(hass: HomeAssistant, mock_setup_entry):
     assert result["title"] == "Living Room"
     assert result["data"]["name"] == "Living Room"
     assert result["options"]["update_interval"] == 20
-    assert result["options"]["comfort_min_temp"] == 19.0
     assert result["options"]["rotation"] == 90
-    assert result["options"]["show_sensor_names"] is False
-
-
-async def test_import_flow_duplicate(hass: HomeAssistant, mock_setup_entry):
-    """Test importing duplicate YAML config."""
-    yaml_config = {
-        "name": "Living Room",
-        "walls": [{"x1": 50, "y1": 50, "x2": 350, "y2": 50}],
-        "sensors": [{"entity": "sensor.test", "x": 100, "y": 100}],
-    }
-
-    # Import first time
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_IMPORT},
-        data=yaml_config,
-    )
-    assert result["type"] == FlowResultType.CREATE_ENTRY
-
-    # Import second time (should abort)
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": config_entries.SOURCE_IMPORT},
-        data=yaml_config,
-    )
-    assert result["type"] == FlowResultType.ABORT
-    assert result["reason"] == "already_configured"

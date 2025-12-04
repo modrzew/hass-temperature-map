@@ -7,6 +7,7 @@ from pathlib import Path
 
 import voluptuous as vol
 from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -113,10 +114,14 @@ async def _register_frontend_resources(hass: HomeAssistant) -> None:
         return
 
     # Register the static path for serving the JavaScript file
-    hass.http.register_static_path(
-        f"/{DOMAIN}",
-        str(www_path),
-        cache_headers=False,
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                url_path=f"/{DOMAIN}",
+                path=str(www_path),
+                cache_headers=False,
+            )
+        ]
     )
 
     # Register the JavaScript module with the frontend

@@ -39,6 +39,9 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
         try:
             # Gather sensor temperatures from Home Assistant states
             sensor_data = []
+            total_sensors = len(self.config["sensors"])
+            _LOGGER.debug("Checking %d configured sensors", total_sensors)
+
             for sensor_config in self.config["sensors"]:
                 entity_id = sensor_config["entity"]
                 state = self.hass.states.get(entity_id)
@@ -68,12 +71,15 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
 
             if not sensor_data:
                 _LOGGER.warning(
-                    "No valid sensor data available for temperature map. "
+                    "No valid sensor data available for temperature map (%d configured, 0 available). "
                     "Will render floor plan only. "
-                    "Check that your temperature sensors exist and have valid numeric values."
+                    "Check that your temperature sensors exist and have valid numeric values.",
+                    total_sensors,
                 )
             else:
-                _LOGGER.debug("Rendering heatmap with %d sensors", len(sensor_data))
+                _LOGGER.debug(
+                    "Rendering heatmap with %d/%d sensors available", len(sensor_data), total_sensors
+                )
 
             # Run image generation in executor (blocking I/O)
             image_bytes = await self.hass.async_add_executor_job(self._render_heatmap, sensor_data)

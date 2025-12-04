@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from io import BytesIO
 from typing import Any
 
@@ -13,6 +14,8 @@ from .temperature import (
     temperature_to_color,
 )
 from .types import TemperatureSensor, Wall
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def render_heatmap_image(
@@ -94,12 +97,21 @@ def render_heatmap_image(
             for s in sensor_objects
         ]
 
+    _LOGGER.debug(
+        "Rendering temperature map: %dx%d pixels, %d walls, %d sensors",
+        width,
+        height,
+        len(wall_objects),
+        len(sensor_objects),
+    )
+
     # Create image
     img = Image.new("RGBA", (width, height), (255, 255, 255, 0))
     pixels = img.load()
 
     # Only render heatmap if we have sensors
     if sensor_objects:
+        _LOGGER.debug("Computing distance grid and rendering heatmap...")
         # Compute distance grid
         distance_grid = compute_distance_grid(sensor_objects, wall_objects, width, height)
 
@@ -107,6 +119,7 @@ def render_heatmap_image(
         from .distance import _compute_boundary_points
 
         boundary_points = _compute_boundary_points(wall_objects, width, height, sensor_objects)
+        _LOGGER.debug("Boundary contains %d points", len(boundary_points))
 
         # Render heatmap pixel by pixel
         for y in range(height):
@@ -123,6 +136,9 @@ def render_heatmap_image(
 
                     # Set pixel color with full opacity
                     pixels[x, y] = (*color, 255)
+        _LOGGER.debug("Heatmap rendering complete")
+    else:
+        _LOGGER.info("No sensors available - rendering floor plan only (walls without temperature data)")
 
     # Draw walls
     draw = ImageDraw.Draw(img)
@@ -153,6 +169,7 @@ def render_heatmap_image(
             try:
                 font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
             except OSError:
+                _LOGGER.debug("DejaVu font not found, using default font")
                 font = ImageFont.load_default()
 
             # Get text size for background
@@ -176,12 +193,17 @@ def render_heatmap_image(
     # Apply rotation if requested
     if rotation == 90:
         img = img.rotate(-90, expand=True)
+        _LOGGER.debug("Applied 90° rotation")
     elif rotation == 180:
         img = img.rotate(180, expand=True)
+        _LOGGER.debug("Applied 180° rotation")
     elif rotation == 270:
         img = img.rotate(90, expand=True)
+        _LOGGER.debug("Applied 270° rotation")
 
     # Convert to PNG bytes
     buffer = BytesIO()
     img.save(buffer, format="PNG")
-    return buffer.getvalue()
+    image_bytes = buffer.getvalue()
+    _LOGGER.debug("Image rendering complete: %d bytes, final size %dx%d", len(image_bytes), img.width, img.height)
+    return image_bytes

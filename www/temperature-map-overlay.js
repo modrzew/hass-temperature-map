@@ -4,7 +4,11 @@
  * A custom Lovelace card that displays a temperature map image entity
  * with clickable sensor dots overlaid on top.
  *
- * Configuration:
+ * Configuration (minimal - reads from entity attributes):
+ * type: custom:temperature-map-overlay
+ * image_entity: image.temperature_map_living_room
+ *
+ * Or with explicit configuration (overrides entity attributes):
  * type: custom:temperature-map-overlay
  * image_entity: image.temperature_map_living_room
  * sensors:
@@ -21,9 +25,6 @@ class TemperatureMapOverlay extends HTMLElement {
   setConfig(config) {
     if (!config.image_entity) {
       throw new Error('You must specify image_entity');
-    }
-    if (!config.sensors || !Array.isArray(config.sensors)) {
-      throw new Error('You must specify sensors array');
     }
 
     this._config = config;
@@ -66,6 +67,18 @@ class TemperatureMapOverlay extends HTMLElement {
       return;
     }
 
+    // Get sensors and rotation from entity attributes or config
+    // Config takes precedence for backwards compatibility
+    const sensors = this._config.sensors || entity.attributes.sensors || [];
+    const rotation = this._config.rotation !== undefined
+      ? this._config.rotation
+      : (entity.attributes.rotation || 0);
+
+    if (!sensors || sensors.length === 0) {
+      console.warn('No sensors configured for temperature map overlay');
+      return;
+    }
+
     // Set image URL
     const imageUrl = `/api/image_proxy/${this._config.image_entity}`;
     this.image.src = imageUrl;
@@ -87,14 +100,13 @@ class TemperatureMapOverlay extends HTMLElement {
       const scale = imgRect.width / imgNaturalWidth;
 
       // Render sensor dots
-      this._config.sensors.forEach(sensor => {
+      sensors.forEach(sensor => {
         const sensorEntity = this._hass.states[sensor.entity];
         if (!sensorEntity) {
           return;
         }
 
         // Apply rotation to coordinates if needed
-        const rotation = this._config.rotation || 0;
         let x = sensor.x;
         let y = sensor.y;
         let width = imgNaturalWidth;

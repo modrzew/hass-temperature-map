@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.image import ImageEntity
 from homeassistant.config_entries import ConfigEntry
@@ -11,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import CONF_ROTATION, CONF_SENSORS, DOMAIN
 from .coordinator import TemperatureMapCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,6 +54,16 @@ class TemperatureMapImage(CoordinatorEntity[TemperatureMapCoordinator], ImageEnt
 
         # Set device info if needed (for grouping in UI)
         # For now, each temperature map is independent
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return entity specific state attributes."""
+        # Get config from coordinator's config entry
+        config = self.coordinator.config_entry.options
+        return {
+            "sensors": config.get(CONF_SENSORS, []),
+            "rotation": config.get(CONF_ROTATION, 0),
+        }
 
     @callback
     def _handle_coordinator_update(self) -> None:

@@ -94,33 +94,35 @@ def render_heatmap_image(
             for s in sensor_objects
         ]
 
-    # Compute distance grid
-    distance_grid = compute_distance_grid(sensor_objects, wall_objects, width, height)
-
-    # Pre-compute boundary points once (avoid recomputing for each pixel)
-    from .distance import _compute_boundary_points
-
-    boundary_points = _compute_boundary_points(wall_objects, width, height, sensor_objects)
-
     # Create image
     img = Image.new("RGBA", (width, height), (255, 255, 255, 0))
     pixels = img.load()
 
-    # Render heatmap pixel by pixel
-    for y in range(height):
-        for x in range(width):
-            # Check if point is inside boundary (using pre-computed boundary)
-            if f"{int(x)},{int(y)}" in boundary_points:
-                # Interpolate temperature at this point
-                temp = interpolate_temperature_physics_with_circular_blending(
-                    x, y, sensor_objects, distance_grid, ambient_temp, wall_objects
-                )
+    # Only render heatmap if we have sensors
+    if sensor_objects:
+        # Compute distance grid
+        distance_grid = compute_distance_grid(sensor_objects, wall_objects, width, height)
 
-                # Convert temperature to color
-                color = temperature_to_color(temp, comfort_min, comfort_max)
+        # Pre-compute boundary points once (avoid recomputing for each pixel)
+        from .distance import _compute_boundary_points
 
-                # Set pixel color with full opacity
-                pixels[x, y] = (*color, 255)
+        boundary_points = _compute_boundary_points(wall_objects, width, height, sensor_objects)
+
+        # Render heatmap pixel by pixel
+        for y in range(height):
+            for x in range(width):
+                # Check if point is inside boundary (using pre-computed boundary)
+                if f"{int(x)},{int(y)}" in boundary_points:
+                    # Interpolate temperature at this point
+                    temp = interpolate_temperature_physics_with_circular_blending(
+                        x, y, sensor_objects, distance_grid, ambient_temp, wall_objects
+                    )
+
+                    # Convert temperature to color
+                    color = temperature_to_color(temp, comfort_min, comfort_max)
+
+                    # Set pixel color with full opacity
+                    pixels[x, y] = (*color, 255)
 
     # Draw walls
     draw = ImageDraw.Draw(img)

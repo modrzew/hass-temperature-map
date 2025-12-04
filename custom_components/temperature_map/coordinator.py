@@ -67,13 +67,13 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
                     _LOGGER.warning("Invalid temperature value for %s: %s", entity_id, state.state)
 
             if not sensor_data:
-                _LOGGER.error(
+                _LOGGER.warning(
                     "No valid sensor data available for temperature map. "
+                    "Will render floor plan only. "
                     "Check that your temperature sensors exist and have valid numeric values."
                 )
-                raise UpdateFailed("No valid sensor data available")
-
-            _LOGGER.debug("Rendering heatmap with %d sensors", len(sensor_data))
+            else:
+                _LOGGER.debug("Rendering heatmap with %d sensors", len(sensor_data))
 
             # Run image generation in executor (blocking I/O)
             image_bytes = await self.hass.async_add_executor_job(self._render_heatmap, sensor_data)

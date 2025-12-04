@@ -5,60 +5,33 @@ from __future__ import annotations
 import logging
 
 from homeassistant.components.image import ImageEntity
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_UPDATE_INTERVAL, DOMAIN
+from .const import DOMAIN
 from .coordinator import TemperatureMapCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
+async def async_setup_entry(
     hass: HomeAssistant,
-    config: ConfigType,
+    config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Set up the Temperature Map image platform."""
-    if DOMAIN not in hass.data or "config" not in hass.data[DOMAIN]:
-        _LOGGER.warning("Temperature Map config not found in hass.data")
-        return
+    """Set up the Temperature Map image platform from a config entry."""
+    # Get the coordinator from hass.data
+    coordinator: TemperatureMapCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    entities = []
-    coordinators = []
+    # Get name from config entry data
+    name = config_entry.data["name"]
 
-    for map_config in hass.data[DOMAIN]["config"]:
-        name = map_config["name"]
-        update_interval = map_config.get(CONF_UPDATE_INTERVAL, 15)
-
-        _LOGGER.info("Setting up Temperature Map: %s", name)
-
-        coordinator = TemperatureMapCoordinator(hass, name, map_config, update_interval)
-
-        # Store coordinator for service calls
-        coordinators.append(coordinator)
-
-        # Fetch initial data - now that we fixed the boundary caching,
-        # this should complete in 1-2 seconds instead of 60+
-        try:
-            _LOGGER.debug("Fetching initial data for %s...", name)
-            await coordinator.async_refresh()
-            _LOGGER.info("Successfully fetched initial data for %s", name)
-        except Exception as err:
-            _LOGGER.error("Failed to fetch initial data for %s: %s", name, err)
-            # Continue anyway - coordinator will retry based on update_interval
-
-        entities.append(TemperatureMapImage(coordinator, name))
-
-    # Store coordinators for the refresh service
-    hass.data[DOMAIN]["coordinators"] = coordinators
-
-    async_add_entities(entities)
-    _LOGGER.info("Added %d Temperature Map entities", len(entities))
+    # Create and add the entity
+    async_add_entities([TemperatureMapImage(coordinator, name)])
+    _LOGGER.info("Added Temperature Map entity for %s", name)
 
 
 class TemperatureMapImage(CoordinatorEntity[TemperatureMapCoordinator], ImageEntity):
@@ -78,8 +51,8 @@ class TemperatureMapImage(CoordinatorEntity[TemperatureMapCoordinator], ImageEnt
         self._attr_name = f"Temperature Map {name}"
         self._attr_unique_id = f"temperature_map_{name.lower().replace(' ', '_')}"
 
-        # Don't set image_last_updated until we have actual data
-        # Let the coordinator update handle it
+        # Set device info if needed (for grouping in UI)
+        # For now, each temperature map is independent
 
     @callback
     def _handle_coordinator_update(self) -> None:

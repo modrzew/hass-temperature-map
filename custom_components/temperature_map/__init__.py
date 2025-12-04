@@ -7,10 +7,10 @@ from pathlib import Path
 
 import voluptuous as vol
 from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers import discovery
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -38,7 +38,7 @@ _LOGGER = logging.getLogger(__name__)
 # Platforms this integration provides
 PLATFORMS: list[Platform] = [Platform.IMAGE]
 
-# YAML configuration schema
+# YAML configuration schema (for backwards compatibility)
 WALL_SCHEMA = vol.Schema(
     {
         vol.Required("x1"): cv.positive_int,
@@ -129,28 +129,79 @@ async def _register_frontend_resources(hass: HomeAssistant) -> None:
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Temperature Map integration from YAML."""
-    if DOMAIN not in config:
-        return True
-
     hass.data.setdefault(DOMAIN, {})
 
-    # Store config for platform setup
-    hass.data[DOMAIN]["config"] = config[DOMAIN]
-
-    # Register frontend resources
+    # Register frontend resources (once for all config entries)
     await _register_frontend_resources(hass)
 
-    # Forward setup to platforms
-    hass.async_create_task(discovery.async_load_platform(hass, Platform.IMAGE, DOMAIN, {}, config))
-
-    async def handle_refresh(call: ServiceCall) -> None:
-        """Handle the refresh service call."""
-        # Get all coordinators and trigger refresh
-        if "coordinators" in hass.data[DOMAIN]:
-            for coordinator in hass.data[DOMAIN]["coordinators"]:
-                await coordinator.async_request_refresh()
-
-    # Register refresh service
-    hass.services.async_register(DOMAIN, "refresh", handle_refresh)
+    # Handle YAML configuration by importing to config entries
+    if DOMAIN in config:
+        for yaml_config in config[DOMAIN]:
+            # Import each YAML config as a config entry
+            hass.async_create_task(
+                hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": "import"},
+                    data=yaml_config,
+                )
+            )
 
     return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Temperature Map from a config entry."""
+    hass.data.setdefault(DOMAIN, {})
+
+    # Import coordinator here to avoid circular imports
+    from .coordinator import TemperatureMapCoordinator
+
+    # Create coordinator for this config entry
+    coordinator = TemperatureMapCoordinator(hass, entry)
+
+    # Store coordinator
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    # Fetch initial data
+    await coordinator.async_config_entry_first_refresh()
+
+    # Forward entry setup to platforms
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Register update listener for options changes
+    entry.async_on_unload(entry.add_update_listener(async_update_options))
+
+    # Register services (only once)
+    if not hass.services.has_service(DOMAIN, "refresh"):
+
+        async def handle_refresh(call: ServiceCall) -> None:
+            """Handle the refresh service call."""
+            # Refresh all coordinators
+            for _entry_id, coordinator in hass.data[DOMAIN].items():
+                if isinstance(coordinator, TemperatureMapCoordinator):
+                    await coordinator.async_request_refresh()
+
+        hass.services.async_register(DOMAIN, "refresh", handle_refresh)
+
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    # Unload platforms
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+    if unload_ok:
+        # Remove coordinator
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unload_ok
+
+
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    # Get the coordinator
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+
+    # Notify coordinator of config update
+    await coordinator.async_config_entry_updated(hass, entry)

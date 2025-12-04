@@ -36,20 +36,24 @@ Run tests with: `pytest tests/ -v`
 
 ## Quality Checks - REQUIRED BEFORE PUSHING
 
-**CRITICAL**: Before committing and pushing ANY code changes, you MUST run both the linter and tests:
+**CRITICAL**: Before committing and pushing ANY code changes, you MUST run the formatter, linter, and tests:
 
 ```bash
-# 1. Run linter (must pass with no errors)
+# 1. Format code (auto-fixes formatting issues)
+ruff format .
+
+# 2. Run linter (must pass with no errors)
 ruff check custom_components/
 
-# 2. Run tests (all tests must pass)
+# 3. Run tests (all tests must pass)
 pytest tests/ -v
 ```
 
 **DO NOT** commit or push code that:
+- Has formatting issues (check with `ruff format --check .`)
 - Has linter errors or warnings
 - Has failing tests
-- Has not been validated with both checks
+- Has not been validated with all three checks
 
 This ensures code quality and prevents breaking changes from being pushed to the repository.
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from io import BytesIO
 from typing import Any
 
@@ -13,6 +14,8 @@ from .temperature import (
     temperature_to_color,
 )
 from .types import TemperatureSensor, Wall
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def render_heatmap_image(
@@ -94,33 +97,50 @@ def render_heatmap_image(
             for s in sensor_objects
         ]
 
-    # Compute distance grid
-    distance_grid = compute_distance_grid(sensor_objects, wall_objects, width, height)
-
-    # Pre-compute boundary points once (avoid recomputing for each pixel)
-    from .distance import _compute_boundary_points
-
-    boundary_points = _compute_boundary_points(wall_objects, width, height, sensor_objects)
+    _LOGGER.debug(
+        "Rendering temperature map: %dx%d pixels, %d walls, %d sensors",
+        width,
+        height,
+        len(wall_objects),
+        len(sensor_objects),
+    )
 
     # Create image
     img = Image.new("RGBA", (width, height), (255, 255, 255, 0))
     pixels = img.load()
 
-    # Render heatmap pixel by pixel
-    for y in range(height):
-        for x in range(width):
-            # Check if point is inside boundary (using pre-computed boundary)
-            if f"{int(x)},{int(y)}" in boundary_points:
-                # Interpolate temperature at this point
-                temp = interpolate_temperature_physics_with_circular_blending(
-                    x, y, sensor_objects, distance_grid, ambient_temp, wall_objects
-                )
+    # Only render heatmap if we have sensors
+    if sensor_objects:
+        _LOGGER.debug("Computing distance grid and rendering heatmap...")
+        # Compute distance grid
+        distance_grid = compute_distance_grid(sensor_objects, wall_objects, width, height)
 
-                # Convert temperature to color
-                color = temperature_to_color(temp, comfort_min, comfort_max)
+        # Pre-compute boundary points once (avoid recomputing for each pixel)
+        from .distance import _compute_boundary_points
 
-                # Set pixel color with full opacity
-                pixels[x, y] = (*color, 255)
+        boundary_points = _compute_boundary_points(wall_objects, width, height, sensor_objects)
+        _LOGGER.debug("Boundary contains %d points", len(boundary_points))
+
+        # Render heatmap pixel by pixel
+        for y in range(height):
+            for x in range(width):
+                # Check if point is inside boundary (using pre-computed boundary)
+                if f"{int(x)},{int(y)}" in boundary_points:
+                    # Interpolate temperature at this point
+                    temp = interpolate_temperature_physics_with_circular_blending(
+                        x, y, sensor_objects, distance_grid, ambient_temp, wall_objects
+                    )
+
+                    # Convert temperature to color
+                    color = temperature_to_color(temp, comfort_min, comfort_max)
+
+                    # Set pixel color with full opacity
+                    pixels[x, y] = (*color, 255)
+        _LOGGER.debug("Heatmap rendering complete")
+    else:
+        _LOGGER.info(
+            "No sensors available - rendering floor plan only (walls without temperature data)"
+        )
 
     # Draw walls
     draw = ImageDraw.Draw(img)
@@ -151,35 +171,58 @@ def render_heatmap_image(
             try:
                 font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
             except OSError:
+                _LOGGER.debug("DejaVu font not found, using default font")
                 font = ImageFont.load_default()
 
-            # Get text size for background
-            bbox = draw.textbbox(
-                (sensor.x, sensor.y + radius + 5), label_text, font=font, anchor="mt"
+            # Get text size for background (no anchor for multiline text support)
+            text_y = sensor.y + radius + 5
+            bbox = draw.textbbox((0, 0), label_text, font=font, align="center")
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+
+            # Center text horizontally
+            text_x = sensor.x - text_width / 2
+
+            # Calculate background rectangle
+            padding = 2
+            bg_bbox = (
+                text_x - padding,
+                text_y - padding,
+                text_x + text_width + padding,
+                text_y + text_height + padding,
             )
 
             # Draw semi-transparent background for text
-            draw.rectangle(bbox, fill=(255, 255, 255, 200))
+            draw.rectangle(bg_bbox, fill=(255, 255, 255, 200))
 
             # Draw text
             draw.text(
-                (sensor.x, sensor.y + radius + 5),
+                (text_x, text_y),
                 label_text,
                 fill=(51, 51, 51),
                 font=font,
-                anchor="mt",
                 align="center",
             )
 
     # Apply rotation if requested
     if rotation == 90:
         img = img.rotate(-90, expand=True)
+        _LOGGER.debug("Applied 90° rotation")
     elif rotation == 180:
         img = img.rotate(180, expand=True)
+        _LOGGER.debug("Applied 180° rotation")
     elif rotation == 270:
         img = img.rotate(90, expand=True)
+        _LOGGER.debug("Applied 270° rotation")
 
     # Convert to PNG bytes
     buffer = BytesIO()
     img.save(buffer, format="PNG")
-    return buffer.getvalue()
+    image_bytes = buffer.getvalue()
+    _LOGGER.debug(
+        "Image rendering complete: %d bytes, final size %dx%d",
+        len(image_bytes),
+        img.width,
+        img.height,
+    )
+    return image_bytes

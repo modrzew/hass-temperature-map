@@ -46,7 +46,9 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
                     _LOGGER.warning("Sensor %s not found in Home Assistant", entity_id)
                     continue
                 if state.state in ("unknown", "unavailable"):
-                    _LOGGER.debug("Sensor %s is unavailable (state: %s), skipping", entity_id, state.state)
+                    _LOGGER.debug(
+                        "Sensor %s is unavailable (state: %s), skipping", entity_id, state.state
+                    )
                     continue
                 try:
                     temp = float(state.state)

@@ -7,7 +7,7 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .distance import compute_distance_grid, is_point_inside_boundary
+from .distance import compute_distance_grid
 from .temperature import (
     interpolate_temperature_physics_with_circular_blending,
     temperature_to_color,

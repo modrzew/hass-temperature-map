@@ -172,21 +172,33 @@ def render_heatmap_image(
                 _LOGGER.debug("DejaVu font not found, using default font")
                 font = ImageFont.load_default()
 
-            # Get text size for background
-            bbox = draw.textbbox(
-                (sensor.x, sensor.y + radius + 5), label_text, font=font, anchor="mt"
+            # Get text size for background (no anchor for multiline text support)
+            text_y = sensor.y + radius + 5
+            bbox = draw.textbbox((0, 0), label_text, font=font, align="center")
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+
+            # Center text horizontally
+            text_x = sensor.x - text_width / 2
+
+            # Calculate background rectangle
+            padding = 2
+            bg_bbox = (
+                text_x - padding,
+                text_y - padding,
+                text_x + text_width + padding,
+                text_y + text_height + padding,
             )
 
             # Draw semi-transparent background for text
-            draw.rectangle(bbox, fill=(255, 255, 255, 200))
+            draw.rectangle(bg_bbox, fill=(255, 255, 255, 200))
 
             # Draw text
             draw.text(
-                (sensor.x, sensor.y + radius + 5),
+                (text_x, text_y),
                 label_text,
                 fill=(51, 51, 51),
                 font=font,
-                anchor="mt",
                 align="center",
             )
 

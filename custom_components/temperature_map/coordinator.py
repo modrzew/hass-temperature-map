@@ -42,8 +42,13 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
             for sensor_config in self.config["sensors"]:
                 entity_id = sensor_config["entity"]
                 state = self.hass.states.get(entity_id)
-                if state is None or state.state in ("unknown", "unavailable"):
-                    _LOGGER.debug("Sensor %s is unavailable, skipping", entity_id)
+                if state is None:
+                    _LOGGER.warning("Sensor %s not found in Home Assistant", entity_id)
+                    continue
+                if state.state in ("unknown", "unavailable"):
+                    _LOGGER.debug(
+                        "Sensor %s is unavailable (state: %s), skipping", entity_id, state.state
+                    )
                     continue
                 try:
                     temp = float(state.state)
@@ -62,15 +67,24 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
                     _LOGGER.warning("Invalid temperature value for %s: %s", entity_id, state.state)
 
             if not sensor_data:
+                _LOGGER.error(
+                    "No valid sensor data available for temperature map. "
+                    "Check that your temperature sensors exist and have valid numeric values."
+                )
                 raise UpdateFailed("No valid sensor data available")
+
+            _LOGGER.debug("Rendering heatmap with %d sensors", len(sensor_data))
 
             # Run image generation in executor (blocking I/O)
             image_bytes = await self.hass.async_add_executor_job(self._render_heatmap, sensor_data)
+
+            _LOGGER.debug("Successfully rendered heatmap (%d bytes)", len(image_bytes))
 
             self._cached_image = image_bytes
             return image_bytes
 
         except Exception as err:
+            _LOGGER.exception("Error rendering heatmap")
             raise UpdateFailed(f"Error rendering heatmap: {err}") from err
 
     def _render_heatmap(self, sensor_data: list[dict]) -> bytes:

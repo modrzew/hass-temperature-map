@@ -113,10 +113,13 @@ async def _register_frontend_resources(hass: HomeAssistant) -> None:
         return
 
     # Register the static path for serving the JavaScript file
-    hass.http.register_static_path(
-        f"/{DOMAIN}",
-        str(www_path),
-        cache_headers=False,
+    await hass.http.async_register_static_paths(
+        [
+            {
+                "path": f"/{DOMAIN}",
+                "directory": str(www_path),
+            }
+        ]
     )
 
     # Register the JavaScript module with the frontend

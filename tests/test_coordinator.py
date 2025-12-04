@@ -9,6 +9,7 @@ import pytest
 try:
     from homeassistant import config_entries
     from homeassistant.core import HomeAssistant
+
     from custom_components.temperature_map.const import (
         CONF_SENSORS,
         CONF_UPDATE_INTERVAL,

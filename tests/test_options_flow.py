@@ -9,6 +9,7 @@ try:
     from homeassistant import config_entries
     from homeassistant.core import HomeAssistant
     from homeassistant.data_entry_flow import FlowResultType
+
     from custom_components.temperature_map.const import (
         CONF_COMFORT_MAX_TEMP,
         CONF_COMFORT_MIN_TEMP,

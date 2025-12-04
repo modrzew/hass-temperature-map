@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import voluptuous as vol
+from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
@@ -95,6 +97,36 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
+async def _register_frontend_resources(hass: HomeAssistant) -> None:
+    """Register frontend resources for the temperature map overlay card."""
+    # Get the path to the www directory in this integration
+    integration_path = Path(__file__).parent
+    www_path = integration_path / "www"
+    js_file = www_path / "temperature-map-overlay.js"
+
+    # Check if the file exists
+    if not js_file.exists():
+        _LOGGER.warning(
+            "Frontend overlay file not found at %s. Clickable sensors will not be available.",
+            js_file,
+        )
+        return
+
+    # Register the static path for serving the JavaScript file
+    hass.http.register_static_path(
+        f"/{DOMAIN}",
+        str(www_path),
+        cache_headers=False,
+    )
+
+    # Register the JavaScript module with the frontend
+    add_extra_js_url(hass, f"/{DOMAIN}/temperature-map-overlay.js")
+
+    _LOGGER.info(
+        "Registered temperature map overlay card at /%s/temperature-map-overlay.js", DOMAIN
+    )
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Temperature Map integration from YAML."""
     if DOMAIN not in config:
@@ -104,6 +136,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     # Store config for platform setup
     hass.data[DOMAIN]["config"] = config[DOMAIN]
+
+    # Register frontend resources
+    await _register_frontend_resources(hass)
 
     # Forward setup to platforms
     hass.async_create_task(discovery.async_load_platform(hass, Platform.IMAGE, DOMAIN, {}, config))

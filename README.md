@@ -23,6 +23,8 @@ A custom Home Assistant integration that generates temperature heatmap images in
 6. Click "Install"
 7. Restart Home Assistant
 
+The frontend overlay card is automatically registered - no manual resource configuration needed!
+
 ### Manual Installation
 
 1. Copy the `custom_components/temperature_map` directory to your Home Assistant `custom_components` directory
@@ -119,18 +121,9 @@ image: image.temperature_map_living_room
 
 ### Lovelace Overlay Card (Recommended)
 
-For interactive sensor dots, use the custom overlay card:
+For interactive sensor dots, use the custom overlay card. The frontend resource is **automatically registered** when you install the integration - no manual setup required!
 
-1. Copy `www/temperature-map-overlay.js` to your `www` directory
-2. Add it as a resource in Lovelace:
-
-```yaml
-resources:
-  - url: /local/temperature-map-overlay.js
-    type: module
-```
-
-3. Add the card to your dashboard:
+Simply add the card to your dashboard:
 
 ```yaml
 type: custom:temperature-map-overlay
@@ -148,7 +141,9 @@ sensors:
     y: 200
 ```
 
-**Note:** The sensor coordinates in the card must match those in the integration configuration.
+**Notes:**
+- The sensor coordinates in the card must match those in the integration configuration
+- After installing/updating via HACS, do a hard refresh (Ctrl+Shift+R / Cmd+Shift+R) in your browser to load the new frontend resources
 
 ### Manual Refresh
 

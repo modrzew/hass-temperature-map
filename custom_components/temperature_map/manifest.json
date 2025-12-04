@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "documentation": "https://github.com/modrzew/hass-temperature-map",
   "issue_tracker": "https://github.com/modrzew/hass-temperature-map/issues",
-  "dependencies": [],
+  "dependencies": ["frontend"],
   "codeowners": ["@modrzew"],
   "iot_class": "local_polling",
   "requirements": ["Pillow>=10.0.0"]

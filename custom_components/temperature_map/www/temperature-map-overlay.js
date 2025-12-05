@@ -51,8 +51,43 @@ class TemperatureMapOverlay extends HTMLElement {
   }
 
   set hass(hass) {
+    const oldHass = this._hass;
     this._hass = hass;
-    this._render();
+
+    // Only re-render if relevant entities changed
+    if (this._shouldUpdate(oldHass, hass)) {
+      this._render();
+    }
+  }
+
+  _shouldUpdate(oldHass, newHass) {
+    if (!oldHass || !this._config) {
+      return true;
+    }
+
+    // Check if image entity changed
+    const oldImageEntity = oldHass.states[this._config.image_entity];
+    const newImageEntity = newHass.states[this._config.image_entity];
+
+    if (!oldImageEntity || !newImageEntity) {
+      return true;
+    }
+
+    if (oldImageEntity.attributes.entity_picture !== newImageEntity.attributes.entity_picture) {
+      return true;
+    }
+
+    // Check if any sensor entity changed (for overlay updates)
+    const sensors = this._config.sensors || newImageEntity.attributes.sensors || [];
+    for (const sensor of sensors) {
+      const oldSensor = oldHass.states[sensor.entity];
+      const newSensor = newHass.states[sensor.entity];
+      if (!oldSensor || !newSensor || oldSensor.state !== newSensor.state) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   _render() {
@@ -79,9 +114,17 @@ class TemperatureMapOverlay extends HTMLElement {
       return;
     }
 
-    // Set image URL
-    const imageUrl = `/api/image_proxy/${this._config.image_entity}`;
-    this.image.src = imageUrl;
+    // Set image URL using entity_picture (includes auth token)
+    const imageUrl = entity.attributes.entity_picture;
+    if (!imageUrl) {
+      this.image.alt = 'Image not available';
+      return;
+    }
+
+    // Only update image src if it changed to avoid unnecessary reloads
+    if (this.image.src !== imageUrl) {
+      this.image.src = imageUrl;
+    }
 
     // Clear existing sensor overlays
     this.overlay.innerHTML = '';

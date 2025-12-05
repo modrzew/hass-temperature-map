@@ -79,8 +79,12 @@ class TemperatureMapOverlay extends HTMLElement {
       return;
     }
 
-    // Set image URL
-    const imageUrl = `/api/image_proxy/${this._config.image_entity}`;
+    // Set image URL using entity_picture (includes auth token)
+    const imageUrl = entity.attributes.entity_picture;
+    if (!imageUrl) {
+      this.image.alt = 'Image not available';
+      return;
+    }
     this.image.src = imageUrl;
 
     // Clear existing sensor overlays

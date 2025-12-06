@@ -32,15 +32,17 @@ class TemperatureMapOverlay extends HTMLElement {
     if (!this.content) {
       this.innerHTML = `
         <ha-card>
-          <div class="card-content" style="position: relative; padding: 0;">
-            <img
-              id="heatmap-image"
-              style="width: 100%; height: auto; display: block;"
-            />
-            <div
-              id="sensor-overlay"
-              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-            ></div>
+          <div class="card-content" style="padding: 0;">
+            <div class="image-container" style="position: relative; display: inline-block; width: 100%;">
+              <img
+                id="heatmap-image"
+                style="width: 100%; height: auto; display: block;"
+              />
+              <div
+                id="sensor-overlay"
+                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"
+              ></div>
+            </div>
           </div>
         </ha-card>
       `;
@@ -182,7 +184,7 @@ class TemperatureMapOverlay extends HTMLElement {
         dot.style.border = '2px solid #333';
         dot.style.transform = 'translate(-50%, -50%)';
         dot.style.cursor = 'pointer';
-        dot.style.zIndex = '10';
+        dot.style.pointerEvents = 'auto';
 
         // Add click handler
         dot.addEventListener('click', () => this._handleSensorClick(sensor.entity));

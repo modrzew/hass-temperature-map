@@ -121,7 +121,20 @@ image: image.temperature_map_living_room
 
 ### Lovelace Overlay Card (Recommended)
 
-For interactive sensor dots, use the custom overlay card. The frontend resource is **automatically registered** when you install the integration - no manual setup required!
+For interactive sensor dots, use the custom overlay card.
+
+#### Step 1: Register the JavaScript Resource
+
+The JavaScript file is automatically served by the integration, but you need to add it as a Lovelace resource:
+
+1. Go to **Settings → Dashboards → Resources** (three-dot menu in top right)
+2. Click **"+ Add Resource"**
+3. Enter URL: `/temperature_map/temperature-map-overlay.js`
+4. Select type: **JavaScript Module**
+5. Click **Create**
+6. Hard refresh your browser (Ctrl+Shift+R / Cmd+Shift+R)
+
+#### Step 2: Add the Card
 
 The card automatically reads sensor positions and rotation from the integration configuration, so you only need to specify the image entity:
 
@@ -148,8 +161,9 @@ sensors:      # Override sensor positions
 ```
 
 **Notes:**
-- After installing/updating via HACS, do a hard refresh (Ctrl+Shift+R / Cmd+Shift+R) in your browser to load the new frontend resources
 - Sensor coordinates are automatically read from the integration configuration - no duplication needed!
+- You only need to add the resource once - it persists across restarts
+- If you update the integration, the cache-busting parameter will automatically update
 
 ### Manual Refresh
 

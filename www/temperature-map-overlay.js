@@ -109,11 +109,6 @@ class TemperatureMapOverlay extends HTMLElement {
       ? this._config.rotation
       : (entity.attributes.rotation || 0);
 
-    if (!sensors || sensors.length === 0) {
-      console.warn('No sensors configured for temperature map overlay');
-      return;
-    }
-
     // Set image URL using entity_picture (includes auth token)
     const imageUrl = entity.attributes.entity_picture;
     if (!imageUrl) {
@@ -124,6 +119,12 @@ class TemperatureMapOverlay extends HTMLElement {
     // Only update image src if it changed to avoid unnecessary reloads
     if (this.image.src !== imageUrl) {
       this.image.src = imageUrl;
+    }
+
+    // If no sensors configured, just show the image without overlays
+    if (!sensors || sensors.length === 0) {
+      console.warn('No sensors configured for temperature map overlay - showing image only');
+      return;
     }
 
     // Clear existing sensor overlays

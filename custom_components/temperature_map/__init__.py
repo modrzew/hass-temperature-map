@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 import voluptuous as vol
@@ -125,10 +126,14 @@ async def _register_frontend_resources(hass: HomeAssistant) -> None:
     )
 
     # Register the JavaScript module with the frontend
-    add_extra_js_url(hass, f"/{DOMAIN}/temperature-map-overlay.js")
+    # Add timestamp parameter to bust browser cache
+    cache_bust = int(time.time())
+    add_extra_js_url(hass, f"/{DOMAIN}/temperature-map-overlay.js?v={cache_bust}")
 
     _LOGGER.info(
-        "Registered temperature map overlay card at /%s/temperature-map-overlay.js", DOMAIN
+        "Registered temperature map overlay card at /%s/temperature-map-overlay.js?v=%s",
+        DOMAIN,
+        cache_bust,
     )
 
 

@@ -216,18 +216,23 @@ class TemperatureMapOverlay extends HTMLElement {
   }
 }
 
-customElements.define('temperature-map-overlay', TemperatureMapOverlay);
+// Only define the custom element if it hasn't been defined yet
+if (!customElements.get('temperature-map-overlay')) {
+  customElements.define('temperature-map-overlay', TemperatureMapOverlay);
 
-// Inform Home Assistant about the card
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'temperature-map-overlay',
-  name: 'Temperature Map Overlay',
-  description: 'Display temperature map with clickable sensor overlays',
-});
+  // Inform Home Assistant about the card
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: 'temperature-map-overlay',
+    name: 'Temperature Map Overlay',
+    description: 'Display temperature map with clickable sensor overlays',
+  });
 
-console.info(
-  '%c TEMPERATURE-MAP-OVERLAY %c 1.0.0 ',
-  'color: white; background: #039be5; font-weight: 700;',
-  'color: #039be5; background: white; font-weight: 700;',
-);
+  console.info(
+    '%c TEMPERATURE-MAP-OVERLAY %c 1.0.0 ',
+    'color: white; background: #039be5; font-weight: 700;',
+    'color: #039be5; background: white; font-weight: 700;',
+  );
+} else {
+  console.warn('temperature-map-overlay already defined, skipping re-registration');
+}

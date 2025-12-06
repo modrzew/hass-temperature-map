@@ -33,10 +33,10 @@ class TemperatureMapOverlay extends HTMLElement {
       this.innerHTML = `
         <ha-card>
           <div class="card-content" style="padding: 0;">
-            <div class="image-container" style="position: relative; display: inline-block; width: 100%;">
+            <div class="image-container" style="position: relative; display: block; width: 100%; line-height: 0;">
               <img
                 id="heatmap-image"
-                style="width: 100%; height: auto; display: block;"
+                style="width: 100%; height: auto; display: block; margin: 0;"
               />
               <div
                 id="sensor-overlay"
@@ -49,6 +49,14 @@ class TemperatureMapOverlay extends HTMLElement {
       this.content = this.querySelector('.card-content');
       this.image = this.querySelector('#heatmap-image');
       this.overlay = this.querySelector('#sensor-overlay');
+
+      // Set up ResizeObserver to recalculate sensor positions when image size changes
+      this._resizeObserver = new ResizeObserver(() => {
+        if (this._hass && this._config) {
+          this._renderSensors();
+        }
+      });
+      this._resizeObserver.observe(this.image);
     }
   }
 
@@ -104,13 +112,6 @@ class TemperatureMapOverlay extends HTMLElement {
       return;
     }
 
-    // Get sensors and rotation from entity attributes or config
-    // Config takes precedence for backwards compatibility
-    const sensors = this._config.sensors || entity.attributes.sensors || [];
-    const rotation = this._config.rotation !== undefined
-      ? this._config.rotation
-      : (entity.attributes.rotation || 0);
-
     // Set image URL using entity_picture (includes auth token)
     const imageUrl = entity.attributes.entity_picture;
     if (!imageUrl) {
@@ -123,85 +124,105 @@ class TemperatureMapOverlay extends HTMLElement {
       this.image.src = imageUrl;
     }
 
+    // Wait for image to load before rendering sensors
+    this.image.onload = () => {
+      this._renderSensors();
+    };
+
+    // If image is already loaded (cached), render sensors immediately
+    if (this.image.complete && this.image.naturalWidth) {
+      this._renderSensors();
+    }
+  }
+
+  _renderSensors() {
+    if (!this._hass || !this._config) {
+      return;
+    }
+
+    const entity = this._hass.states[this._config.image_entity];
+    if (!entity) {
+      return;
+    }
+
+    // Get sensors and rotation from entity attributes or config
+    // Config takes precedence for backwards compatibility
+    const sensors = this._config.sensors || entity.attributes.sensors || [];
+    const rotation = this._config.rotation !== undefined
+      ? this._config.rotation
+      : (entity.attributes.rotation || 0);
+
     // If no sensors configured, just show the image without overlays
     if (!sensors || sensors.length === 0) {
-      console.warn('No sensors configured for temperature map overlay - showing image only');
       return;
     }
 
     // Clear existing sensor overlays
     this.overlay.innerHTML = '';
 
-    // Wait for image to load to get dimensions
-    this.image.onload = () => {
-      const imgRect = this.image.getBoundingClientRect();
-      const imgNaturalWidth = this.image.naturalWidth;
-      const imgNaturalHeight = this.image.naturalHeight;
+    const imgNaturalWidth = this.image.naturalWidth;
+    const imgNaturalHeight = this.image.naturalHeight;
 
-      if (!imgNaturalWidth || !imgNaturalHeight) {
+    if (!imgNaturalWidth || !imgNaturalHeight) {
+      return;
+    }
+
+    // Render sensor dots using percentage positioning
+    sensors.forEach(sensor => {
+      const sensorEntity = this._hass.states[sensor.entity];
+      if (!sensorEntity) {
         return;
       }
 
-      // Calculate scaling factor
-      const scale = imgRect.width / imgNaturalWidth;
+      // Apply rotation to coordinates if needed
+      let x = sensor.x;
+      let y = sensor.y;
+      let width = imgNaturalWidth;
+      let height = imgNaturalHeight;
 
-      // Render sensor dots
-      sensors.forEach(sensor => {
-        const sensorEntity = this._hass.states[sensor.entity];
-        if (!sensorEntity) {
-          return;
-        }
+      if (rotation === 90) {
+        [x, y] = [imgNaturalHeight - y, x];
+        [width, height] = [height, width];
+      } else if (rotation === 180) {
+        [x, y] = [imgNaturalWidth - x, imgNaturalHeight - y];
+      } else if (rotation === 270) {
+        [x, y] = [y, imgNaturalWidth - x];
+        [width, height] = [height, width];
+      }
 
-        // Apply rotation to coordinates if needed
-        let x = sensor.x;
-        let y = sensor.y;
-        let width = imgNaturalWidth;
-        let height = imgNaturalHeight;
+      // Calculate percentage positions (auto-scales with image)
+      const percentX = (x / width) * 100;
+      const percentY = (y / height) * 100;
 
-        if (rotation === 90) {
-          [x, y] = [imgNaturalHeight - y, x];
-          [width, height] = [height, width];
-        } else if (rotation === 180) {
-          [x, y] = [imgNaturalWidth - x, imgNaturalHeight - y];
-        } else if (rotation === 270) {
-          [x, y] = [y, imgNaturalWidth - x];
-          [width, height] = [height, width];
-        }
+      // Create sensor dot
+      const dot = document.createElement('div');
+      dot.style.position = 'absolute';
+      dot.style.left = `${percentX}%`;
+      dot.style.top = `${percentY}%`;
+      dot.style.width = '12px';
+      dot.style.height = '12px';
+      dot.style.borderRadius = '50%';
+      dot.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+      dot.style.border = '2px solid #333';
+      dot.style.transform = 'translate(-50%, -50%)';
+      dot.style.cursor = 'pointer';
+      dot.style.pointerEvents = 'auto';
 
-        // Scale coordinates to displayed image size
-        const displayX = x * scale;
-        const displayY = y * scale;
+      // Add click handler
+      dot.addEventListener('click', () => this._handleSensorClick(sensor.entity));
 
-        // Create sensor dot
-        const dot = document.createElement('div');
-        dot.style.position = 'absolute';
-        dot.style.left = `${displayX}px`;
-        dot.style.top = `${displayY}px`;
-        dot.style.width = '12px';
-        dot.style.height = '12px';
-        dot.style.borderRadius = '50%';
-        dot.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-        dot.style.border = '2px solid #333';
-        dot.style.transform = 'translate(-50%, -50%)';
-        dot.style.cursor = 'pointer';
-        dot.style.pointerEvents = 'auto';
-
-        // Add click handler
-        dot.addEventListener('click', () => this._handleSensorClick(sensor.entity));
-
-        // Add hover effect
-        dot.addEventListener('mouseenter', () => {
-          dot.style.backgroundColor = 'rgba(255, 255, 255, 1)';
-          dot.style.transform = 'translate(-50%, -50%) scale(1.2)';
-        });
-        dot.addEventListener('mouseleave', () => {
-          dot.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-          dot.style.transform = 'translate(-50%, -50%)';
-        });
-
-        this.overlay.appendChild(dot);
+      // Add hover effect
+      dot.addEventListener('mouseenter', () => {
+        dot.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+        dot.style.transform = 'translate(-50%, -50%) scale(1.2)';
       });
-    };
+      dot.addEventListener('mouseleave', () => {
+        dot.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+        dot.style.transform = 'translate(-50%, -50%)';
+      });
+
+      this.overlay.appendChild(dot);
+    });
   }
 
   _handleSensorClick(entityId) {
@@ -215,6 +236,13 @@ class TemperatureMapOverlay extends HTMLElement {
 
   getCardSize() {
     return 3;
+  }
+
+  disconnectedCallback() {
+    // Clean up ResizeObserver when element is removed
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+    }
   }
 }
 

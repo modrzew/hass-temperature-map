@@ -60,8 +60,17 @@ class TemperatureMapImage(CoordinatorEntity[TemperatureMapCoordinator], ImageEnt
         """Return entity specific state attributes."""
         # Get config from coordinator's config entry
         config = self.coordinator.config_entry.options
+
+        # Use adjusted sensor coordinates if available (accounts for padding and rotation)
+        # Otherwise fall back to original coordinates from config
+        sensors = (
+            self.coordinator._adjusted_sensors
+            if self.coordinator._adjusted_sensors is not None
+            else config.get(CONF_SENSORS, [])
+        )
+
         return {
-            "sensors": config.get(CONF_SENSORS, []),
+            "sensors": sensors,
             "rotation": config.get(CONF_ROTATION, 0),
         }
 

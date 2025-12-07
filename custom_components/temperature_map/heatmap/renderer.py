@@ -60,7 +60,7 @@ def render_heatmap_image(
     show_names: bool = True,
     show_temps: bool = True,
     rotation: int = 0,
-) -> bytes:
+) -> tuple[bytes, list[dict[str, Any]]]:
     """
     Render the complete heatmap image with temperature colors, walls, and sensors.
 
@@ -75,7 +75,7 @@ def render_heatmap_image(
         rotation: Image rotation (0, 90, 180, 270)
 
     Returns:
-        PNG image as bytes
+        Tuple of (PNG image as bytes, adjusted sensor coordinates with rotation applied)
     """
     # Convert dict walls to Wall objects
     wall_objects = [Wall(x1=w["x1"], y1=w["y1"], x2=w["x2"], y2=w["y2"]) for w in walls]
@@ -260,4 +260,21 @@ def render_heatmap_image(
         img.width,
         img.height,
     )
-    return image_bytes
+
+    # Build adjusted sensor coordinates for frontend overlay
+    # These match the positions where sensors were actually rendered in the image
+    adjusted_sensors = []
+    for sensor in sensor_objects:
+        # Transform coordinates based on rotation to match rendered positions
+        sensor_x, sensor_y = _transform_point(sensor.x, sensor.y, rotation, orig_width, orig_height)
+
+        adjusted_sensors.append(
+            {
+                "entity": sensor.entity,
+                "x": sensor_x,
+                "y": sensor_y,
+                "label": sensor.label,
+            }
+        )
+
+    return image_bytes, adjusted_sensors

@@ -62,6 +62,9 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
         self._last_walls: list[dict] | None = None
         self._last_sensors: list[dict] | None = None
 
+        # Store adjusted sensor coordinates (after padding/rotation)
+        self._adjusted_sensors: list[dict[str, Any]] | None = None
+
     @property
     def _config(self) -> dict[str, Any]:
         """Get the current configuration from config entry options."""
@@ -154,22 +157,31 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
                 )
 
             # Run image generation in executor (blocking I/O)
-            image_bytes = await self.hass.async_add_executor_job(self._render_heatmap, sensor_data)
+            image_bytes, adjusted_sensors = await self.hass.async_add_executor_job(
+                self._render_heatmap, sensor_data
+            )
 
-            _LOGGER.debug("Successfully rendered heatmap (%d bytes)", len(image_bytes))
+            _LOGGER.debug(
+                "Successfully rendered heatmap (%d bytes) with %d adjusted sensor positions",
+                len(image_bytes),
+                len(adjusted_sensors),
+            )
 
             # Update geometry cache
             self._last_walls = config.get(CONF_WALLS, [])
             self._last_sensors = config.get(CONF_SENSORS, [])
 
+            # Store both image and adjusted sensor coordinates
             self._cached_image = image_bytes
+            self._adjusted_sensors = adjusted_sensors
+
             return image_bytes
 
         except Exception as err:
             _LOGGER.exception("Error rendering heatmap")
             raise UpdateFailed(f"Error rendering heatmap: {err}") from err
 
-    def _render_heatmap(self, sensor_data: list[dict]) -> bytes:
+    def _render_heatmap(self, sensor_data: list[dict]) -> tuple[bytes, list[dict[str, Any]]]:
         """Render the heatmap image (runs in executor thread)."""
         # Import here to avoid blocking the event loop on startup
         from .heatmap.renderer import render_heatmap_image

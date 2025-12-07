@@ -12,6 +12,7 @@ from homeassistant.const import CONF_NAME
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
 from .const import (
     CONF_AMBIENT_TEMP,
@@ -184,8 +185,18 @@ class TemperatureMapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_WALLS): cv.string,
-                vol.Required(CONF_SENSORS): cv.string,
+                vol.Required(CONF_WALLS): TextSelector(
+                    TextSelectorConfig(
+                        type=TextSelectorType.TEXT,
+                        multiline=True,
+                    )
+                ),
+                vol.Required(CONF_SENSORS): TextSelector(
+                    TextSelectorConfig(
+                        type=TextSelectorType.TEXT,
+                        multiline=True,
+                    )
+                ),
             }
         )
 
@@ -342,8 +353,18 @@ class TemperatureMapOptionsFlow(config_entries.OptionsFlow):
 
         data_schema = vol.Schema(
             {
-                vol.Optional(CONF_WALLS, default=current_walls): cv.string,
-                vol.Optional(CONF_SENSORS, default=current_sensors): cv.string,
+                vol.Optional(CONF_WALLS, default=current_walls): TextSelector(
+                    TextSelectorConfig(
+                        type=TextSelectorType.TEXT,
+                        multiline=True,
+                    )
+                ),
+                vol.Optional(CONF_SENSORS, default=current_sensors): TextSelector(
+                    TextSelectorConfig(
+                        type=TextSelectorType.TEXT,
+                        multiline=True,
+                    )
+                ),
             }
         )
 

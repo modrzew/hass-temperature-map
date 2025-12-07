@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
 import voluptuous as vol
+import yaml
 from homeassistant import config_entries
 from homeassistant.const import CONF_NAME
 from homeassistant.core import callback
@@ -62,28 +62,32 @@ def validate_sensor(sensor: dict) -> dict:
     return schema(sensor)
 
 
-def validate_walls_json(walls_json: str) -> list[dict]:
-    """Validate and parse walls JSON."""
+def validate_walls_yaml(walls_yaml: str) -> list[dict]:
+    """Validate and parse walls YAML."""
     try:
-        walls = json.loads(walls_json)
+        walls = yaml.safe_load(walls_yaml)
+        if walls is None:
+            return []
         if not isinstance(walls, list):
-            raise vol.Invalid("Walls must be a JSON array")
+            raise vol.Invalid("Walls must be a YAML list")
         return [validate_wall(wall) for wall in walls]
-    except json.JSONDecodeError as err:
-        raise vol.Invalid(f"Invalid JSON: {err}") from err
+    except yaml.YAMLError as err:
+        raise vol.Invalid(f"Invalid YAML: {err}") from err
 
 
-def validate_sensors_json(sensors_json: str) -> list[dict]:
-    """Validate and parse sensors JSON."""
+def validate_sensors_yaml(sensors_yaml: str) -> list[dict]:
+    """Validate and parse sensors YAML."""
     try:
-        sensors = json.loads(sensors_json)
+        sensors = yaml.safe_load(sensors_yaml)
+        if sensors is None:
+            raise vol.Invalid("At least one sensor is required")
         if not isinstance(sensors, list):
-            raise vol.Invalid("Sensors must be a JSON array")
+            raise vol.Invalid("Sensors must be a YAML list")
         if not sensors:
             raise vol.Invalid("At least one sensor is required")
         return [validate_sensor(sensor) for sensor in sensors]
-    except json.JSONDecodeError as err:
-        raise vol.Invalid(f"Invalid JSON: {err}") from err
+    except yaml.YAMLError as err:
+        raise vol.Invalid(f"Invalid YAML: {err}") from err
 
 
 class TemperatureMapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -142,11 +146,11 @@ class TemperatureMapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             try:
-                # Validate walls JSON
-                walls = validate_walls_json(user_input[CONF_WALLS])
+                # Validate walls YAML
+                walls = validate_walls_yaml(user_input[CONF_WALLS])
 
-                # Validate sensors JSON
-                sensors = validate_sensors_json(user_input[CONF_SENSORS])
+                # Validate sensors YAML
+                sensors = validate_sensors_yaml(user_input[CONF_SENSORS])
 
                 # Combine all configuration
                 name = self._config.pop(CONF_NAME)
@@ -165,22 +169,23 @@ class TemperatureMapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except vol.Invalid as err:
                 errors["base"] = str(err)
 
-        # Example JSON for help text
-        example_walls = json.dumps(
-            [
-                {"x1": 50, "y1": 50, "x2": 350, "y2": 50},
-                {"x1": 350, "y1": 50, "x2": 350, "y2": 350},
-            ],
-            indent=2,
-        )
+        # Example YAML for help text
+        example_walls = """- x1: 50
+  y1: 50
+  x2: 350
+  y2: 50
+- x1: 350
+  y1: 50
+  x2: 350
+  y2: 350"""
 
-        example_sensors = json.dumps(
-            [
-                {"entity": "sensor.living_room_temp", "x": 100, "y": 100, "label": "Living Room"},
-                {"entity": "sensor.bedroom_temp", "x": 250, "y": 250},
-            ],
-            indent=2,
-        )
+        example_sensors = """- entity: sensor.living_room_temp
+  x: 100
+  y: 100
+  label: Living Room
+- entity: sensor.bedroom_temp
+  x: 250
+  y: 250"""
 
         data_schema = vol.Schema(
             {
@@ -304,14 +309,14 @@ class TemperatureMapOptionsFlow(config_entries.OptionsFlow):
             try:
                 # If these fields exist, validate them
                 if CONF_WALLS in user_input:
-                    walls = validate_walls_json(user_input[CONF_WALLS])
+                    walls = validate_walls_yaml(user_input[CONF_WALLS])
                     user_input[CONF_WALLS] = walls
                 else:
                     # Keep existing walls
                     user_input[CONF_WALLS] = self.config_entry.options[CONF_WALLS]
 
                 if CONF_SENSORS in user_input:
-                    sensors = validate_sensors_json(user_input[CONF_SENSORS])
+                    sensors = validate_sensors_yaml(user_input[CONF_SENSORS])
                     user_input[CONF_SENSORS] = sensors
                 else:
                     # Keep existing sensors
@@ -324,10 +329,10 @@ class TemperatureMapOptionsFlow(config_entries.OptionsFlow):
                 errors["base"] = str(err)
                 # Fall through to show form again with error
 
-        # Get current geometry as JSON for display
+        # Get current geometry as YAML for display
         current = self.config_entry.options
-        current_walls = json.dumps(current.get(CONF_WALLS, []), indent=2)
-        current_sensors = json.dumps(current.get(CONF_SENSORS, []), indent=2)
+        current_walls = yaml.dump(current.get(CONF_WALLS, []), default_flow_style=False)
+        current_sensors = yaml.dump(current.get(CONF_SENSORS, []), default_flow_style=False)
 
         data_schema = vol.Schema(
             {
@@ -341,6 +346,6 @@ class TemperatureMapOptionsFlow(config_entries.OptionsFlow):
             data_schema=data_schema,
             errors=errors,
             description_placeholders={
-                "info": "Edit the JSON below to modify walls and sensors. Leave unchanged to keep current values.",
+                "info": "Edit the YAML below to modify walls and sensors. Leave unchanged to keep current values.",
             },
         )

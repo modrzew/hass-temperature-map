@@ -1,0 +1,59 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Temperature Map Configuration",
+        "description": "Configure basic settings for your temperature map.",
+        "data": {
+          "name": "Name",
+          "update_interval": "Update interval (minutes)",
+          "comfort_min_temp": "Comfortable minimum temperature (°C)",
+          "comfort_max_temp": "Comfortable maximum temperature (°C)",
+          "ambient_temp": "Ambient/default temperature (°C)",
+          "show_sensor_names": "Show sensor names",
+          "show_sensor_temperatures": "Show sensor temperatures",
+          "rotation": "Image rotation (degrees)"
+        }
+      },
+      "geometry": {
+        "title": "Configure Walls and Sensors",
+        "description": "Enter walls and sensors in YAML format.\n\nExample walls:\n{example_walls}\n\nExample sensors:\n{example_sensors}",
+        "data": {
+          "walls": "Walls (YAML list)",
+          "sensors": "Sensors (YAML list)"
+        }
+      }
+    },
+    "error": {
+      "already_configured": "This name is already configured"
+    },
+    "abort": {
+      "already_configured": "This name is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Temperature Map Options",
+        "description": "Update basic settings for your temperature map.",
+        "data": {
+          "update_interval": "Update interval (minutes)",
+          "comfort_min_temp": "Comfortable minimum temperature (°C)",
+          "comfort_max_temp": "Comfortable maximum temperature (°C)",
+          "ambient_temp": "Ambient/default temperature (°C)",
+          "show_sensor_names": "Show sensor names",
+          "show_sensor_temperatures": "Show sensor temperatures",
+          "rotation": "Image rotation (degrees)"
+        }
+      },
+      "geometry": {
+        "title": "Configure Walls and Sensors",
+        "description": "{info}\n\nWalls and sensors are in YAML format. Use proper YAML list syntax with dashes and indentation.",
+        "data": {
+          "walls": "Walls (YAML list)",
+          "sensors": "Sensors (YAML list)"
+        }
+      }
+    }
+  }
+}

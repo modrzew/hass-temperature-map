@@ -174,25 +174,15 @@ class TemperatureMapOverlay extends HTMLElement {
         return;
       }
 
-      // Apply rotation to coordinates if needed
-      let x = sensor.x;
-      let y = sensor.y;
-      let width = imgNaturalWidth;
-      let height = imgNaturalHeight;
-
-      if (rotation === 90) {
-        [x, y] = [imgNaturalHeight - y, x];
-        [width, height] = [height, width];
-      } else if (rotation === 180) {
-        [x, y] = [imgNaturalWidth - x, imgNaturalHeight - y];
-      } else if (rotation === 270) {
-        [x, y] = [y, imgNaturalWidth - x];
-        [width, height] = [height, width];
-      }
+      // Backend already returns coordinates adjusted for padding AND rotation
+      // So we use them directly without re-applying rotation transformation
+      const x = sensor.x;
+      const y = sensor.y;
 
       // Calculate percentage positions (auto-scales with image)
-      const percentX = (x / width) * 100;
-      const percentY = (y / height) * 100;
+      // Use the rotated image dimensions (naturalWidth/Height are already rotated)
+      const percentX = (x / imgNaturalWidth) * 100;
+      const percentY = (y / imgNaturalHeight) * 100;
 
       // Create sensor dot
       const dot = document.createElement('div');

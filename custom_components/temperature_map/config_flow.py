@@ -247,11 +247,16 @@ class TemperatureMapConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class TemperatureMapOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for Temperature Map."""
 
+    def __init__(self) -> None:
+        """Initialize options flow."""
+        self._basic_options: dict[str, Any] = {}
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Manage the options - basic settings."""
         if user_input is not None:
-            # Move to geometry step
-            return await self.async_step_geometry(user_input)
+            # Store basic settings and move to geometry step
+            self._basic_options = user_input
+            return await self.async_step_geometry()
 
         # Get current options
         current = self.config_entry.options
@@ -302,23 +307,29 @@ class TemperatureMapOptionsFlow(config_entries.OptionsFlow):
 
         if user_input is not None:
             try:
-                # If these fields exist, validate them
+                # Validate walls
                 if CONF_WALLS in user_input:
                     walls = validate_walls_json(user_input[CONF_WALLS])
-                    user_input[CONF_WALLS] = walls
                 else:
                     # Keep existing walls
-                    user_input[CONF_WALLS] = self.config_entry.options[CONF_WALLS]
+                    walls = self.config_entry.options[CONF_WALLS]
 
+                # Validate sensors
                 if CONF_SENSORS in user_input:
                     sensors = validate_sensors_json(user_input[CONF_SENSORS])
-                    user_input[CONF_SENSORS] = sensors
                 else:
                     # Keep existing sensors
-                    user_input[CONF_SENSORS] = self.config_entry.options[CONF_SENSORS]
+                    sensors = self.config_entry.options[CONF_SENSORS]
+
+                # Merge basic options from step 1 with geometry from step 2
+                all_options = {
+                    **self._basic_options,
+                    CONF_WALLS: walls,
+                    CONF_SENSORS: sensors,
+                }
 
                 # Create the entry with all options
-                return self.async_create_entry(title="", data=user_input)
+                return self.async_create_entry(title="", data=all_options)
 
             except vol.Invalid as err:
                 errors["base"] = str(err)

@@ -253,13 +253,32 @@ class TemperatureMapOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for Temperature Map."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Manage the options - basic settings."""
+        """Manage all options in a single form."""
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            # Move to geometry step
-            return await self.async_step_geometry(user_input)
+            try:
+                # Validate walls YAML
+                walls = validate_walls_yaml(user_input[CONF_WALLS])
+                user_input[CONF_WALLS] = walls
+
+                # Validate sensors YAML
+                sensors = validate_sensors_yaml(user_input[CONF_SENSORS])
+                user_input[CONF_SENSORS] = sensors
+
+                # Create the entry with all options
+                return self.async_create_entry(title="", data=user_input)
+
+            except vol.Invalid as err:
+                errors["base"] = str(err)
+                # Fall through to show form again with error
 
         # Get current options
         current = self.config_entry.options
+
+        # Get current geometry as YAML for display
+        current_walls = yaml.dump(current.get(CONF_WALLS, []), default_flow_style=False)
+        current_sensors = yaml.dump(current.get(CONF_SENSORS, []), default_flow_style=False)
 
         data_schema = vol.Schema(
             {
@@ -293,59 +312,13 @@ class TemperatureMapOptionsFlow(config_entries.OptionsFlow):
                     CONF_ROTATION,
                     default=current.get(CONF_ROTATION, DEFAULT_ROTATION),
                 ): vol.In([0, 90, 180, 270]),
-            }
-        )
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=data_schema,
-        )
-
-    async def async_step_geometry(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Handle geometry options - walls and sensors."""
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            try:
-                # If these fields exist, validate them
-                if CONF_WALLS in user_input:
-                    walls = validate_walls_yaml(user_input[CONF_WALLS])
-                    user_input[CONF_WALLS] = walls
-                else:
-                    # Keep existing walls
-                    user_input[CONF_WALLS] = self.config_entry.options[CONF_WALLS]
-
-                if CONF_SENSORS in user_input:
-                    sensors = validate_sensors_yaml(user_input[CONF_SENSORS])
-                    user_input[CONF_SENSORS] = sensors
-                else:
-                    # Keep existing sensors
-                    user_input[CONF_SENSORS] = self.config_entry.options[CONF_SENSORS]
-
-                # Create the entry with all options
-                return self.async_create_entry(title="", data=user_input)
-
-            except vol.Invalid as err:
-                errors["base"] = str(err)
-                # Fall through to show form again with error
-
-        # Get current geometry as YAML for display
-        current = self.config_entry.options
-        current_walls = yaml.dump(current.get(CONF_WALLS, []), default_flow_style=False)
-        current_sensors = yaml.dump(current.get(CONF_SENSORS, []), default_flow_style=False)
-
-        data_schema = vol.Schema(
-            {
                 vol.Optional(CONF_WALLS, default=current_walls): cv.string,
                 vol.Optional(CONF_SENSORS, default=current_sensors): cv.string,
             }
         )
 
         return self.async_show_form(
-            step_id="geometry",
+            step_id="init",
             data_schema=data_schema,
             errors=errors,
-            description_placeholders={
-                "info": "Edit the YAML below to modify walls and sensors. Leave unchanged to keep current values.",
-            },
         )

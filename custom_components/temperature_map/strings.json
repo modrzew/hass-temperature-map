@@ -35,7 +35,7 @@
     "step": {
       "init": {
         "title": "Temperature Map Options",
-        "description": "Update basic settings for your temperature map.",
+        "description": "Update settings for your temperature map. Walls and sensors use YAML format.",
         "data": {
           "update_interval": "Update interval (minutes)",
           "comfort_min_temp": "Comfortable minimum temperature (°C)",
@@ -43,13 +43,7 @@
           "ambient_temp": "Ambient/default temperature (°C)",
           "show_sensor_names": "Show sensor names",
           "show_sensor_temperatures": "Show sensor temperatures",
-          "rotation": "Image rotation (degrees)"
-        }
-      },
-      "geometry": {
-        "title": "Configure Walls and Sensors",
-        "description": "{info}\n\nWalls and sensors are in YAML format. Use proper YAML list syntax with dashes and indentation.",
-        "data": {
+          "rotation": "Image rotation (degrees)",
           "walls": "Walls (YAML list)",
           "sensors": "Sensors (YAML list)"
         }

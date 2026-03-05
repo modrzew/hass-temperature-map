@@ -1,5 +1,8 @@
 """Constants for the Temperature Map integration."""
 
+import voluptuous as vol
+from homeassistant.helpers import config_validation as cv
+
 DOMAIN = "temperature_map"
 
 # Config keys
@@ -21,3 +24,22 @@ DEFAULT_AMBIENT_TEMP = 22
 DEFAULT_SHOW_SENSOR_NAMES = True
 DEFAULT_SHOW_SENSOR_TEMPERATURES = True
 DEFAULT_ROTATION = 0
+
+# Shared validation schemas
+WALL_SCHEMA = vol.Schema(
+    {
+        vol.Required("x1"): cv.positive_int,
+        vol.Required("y1"): cv.positive_int,
+        vol.Required("x2"): cv.positive_int,
+        vol.Required("y2"): cv.positive_int,
+    }
+)
+
+SENSOR_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity"): cv.entity_id,
+        vol.Required("x"): cv.positive_int,
+        vol.Required("y"): cv.positive_int,
+        vol.Optional("label"): cv.string,
+    }
+)

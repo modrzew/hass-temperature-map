@@ -32,35 +32,11 @@ from .const import (
     DEFAULT_SHOW_SENSOR_TEMPERATURES,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    SENSOR_SCHEMA,
+    WALL_SCHEMA,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def validate_wall(wall: dict) -> dict:
-    """Validate a wall configuration."""
-    schema = vol.Schema(
-        {
-            vol.Required("x1"): cv.positive_int,
-            vol.Required("y1"): cv.positive_int,
-            vol.Required("x2"): cv.positive_int,
-            vol.Required("y2"): cv.positive_int,
-        }
-    )
-    return schema(wall)
-
-
-def validate_sensor(sensor: dict) -> dict:
-    """Validate a sensor configuration."""
-    schema = vol.Schema(
-        {
-            vol.Required("entity"): cv.entity_id,
-            vol.Required("x"): cv.positive_int,
-            vol.Required("y"): cv.positive_int,
-            vol.Optional("label"): cv.string,
-        }
-    )
-    return schema(sensor)
 
 
 def validate_walls_json(walls_json: str) -> list[dict]:
@@ -69,7 +45,7 @@ def validate_walls_json(walls_json: str) -> list[dict]:
         walls = json.loads(walls_json)
         if not isinstance(walls, list):
             raise vol.Invalid("Walls must be a JSON array")
-        return [validate_wall(wall) for wall in walls]
+        return [WALL_SCHEMA(wall) for wall in walls]
     except json.JSONDecodeError as err:
         raise vol.Invalid(f"Invalid JSON: {err}") from err
 
@@ -82,7 +58,7 @@ def validate_sensors_json(sensors_json: str) -> list[dict]:
             raise vol.Invalid("Sensors must be a JSON array")
         if not sensors:
             raise vol.Invalid("At least one sensor is required")
-        return [validate_sensor(sensor) for sensor in sensors]
+        return [SENSOR_SCHEMA(sensor) for sensor in sensors]
     except json.JSONDecodeError as err:
         raise vol.Invalid(f"Invalid JSON: {err}") from err
 

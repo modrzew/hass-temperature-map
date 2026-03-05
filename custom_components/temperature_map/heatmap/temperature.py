@@ -95,7 +95,6 @@ def interpolate_temperature_physics(
     sensors: list[TemperatureSensor],
     distance_grid: DistanceGrid,
     ambient_temp: float = 22,
-    walls: list[Wall] | None = None,
 ) -> float:
     """
     Physics-based temperature interpolation using flood fill distances.
@@ -108,7 +107,6 @@ def interpolate_temperature_physics(
         sensors: List of sensor data with positions and temperatures
         distance_grid: Pre-computed distance grid from flood fill
         ambient_temp: Default ambient temperature
-        walls: List of walls (for future extensions)
 
     Returns:
         Interpolated temperature at the given point
@@ -222,9 +220,7 @@ def interpolate_temperature_physics_with_circular_blending(
 
         if direct_distance <= blend_radius:
             # Get the base interpolated temperature (without this sensor's direct influence)
-            base_temp = interpolate_temperature_physics(
-                x, y, sensors, distance_grid, ambient_temp, walls
-            )
+            base_temp = interpolate_temperature_physics(x, y, sensors, distance_grid, ambient_temp)
 
             # Calculate circular blend factor (1.0 at sensor center, 0.0 at blend radius)
             blend_factor = max(0, (blend_radius - direct_distance) / blend_radius)

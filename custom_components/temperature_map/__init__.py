@@ -31,31 +31,14 @@ from .const import (
     DEFAULT_SHOW_SENSOR_TEMPERATURES,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+    SENSOR_SCHEMA,
+    WALL_SCHEMA,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 # Platforms this integration provides
 PLATFORMS: list[Platform] = [Platform.IMAGE]
-
-# YAML configuration schema (for backwards compatibility)
-WALL_SCHEMA = vol.Schema(
-    {
-        vol.Required("x1"): cv.positive_int,
-        vol.Required("y1"): cv.positive_int,
-        vol.Required("x2"): cv.positive_int,
-        vol.Required("y2"): cv.positive_int,
-    }
-)
-
-SENSOR_SCHEMA = vol.Schema(
-    {
-        vol.Required("entity"): cv.entity_id,
-        vol.Required("x"): cv.positive_int,
-        vol.Required("y"): cv.positive_int,
-        vol.Optional("label"): cv.string,
-    }
-)
 
 CONFIG_SCHEMA = vol.Schema(
     {

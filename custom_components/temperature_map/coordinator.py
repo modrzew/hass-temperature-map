@@ -66,6 +66,11 @@ class TemperatureMapCoordinator(DataUpdateCoordinator[bytes]):
         self._adjusted_sensors: list[dict[str, Any]] | None = None
 
     @property
+    def adjusted_sensors(self) -> list[dict[str, Any]] | None:
+        """Return adjusted sensor coordinates after padding/rotation."""
+        return self._adjusted_sensors
+
+    @property
     def _config(self) -> dict[str, Any]:
         """Get the current configuration from config entry options."""
         return self.config_entry.options

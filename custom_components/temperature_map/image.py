@@ -64,8 +64,8 @@ class TemperatureMapImage(CoordinatorEntity[TemperatureMapCoordinator], ImageEnt
         # Use adjusted sensor coordinates if available (accounts for padding and rotation)
         # Otherwise fall back to original coordinates from config
         sensors = (
-            self.coordinator._adjusted_sensors
-            if self.coordinator._adjusted_sensors is not None
+            self.coordinator.adjusted_sensors
+            if self.coordinator.adjusted_sensors is not None
             else config.get(CONF_SENSORS, [])
         )
 
